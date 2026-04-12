@@ -1,4 +1,4 @@
-# GitHub Copilot AI Template - Python Configuration
+# Plex Scripts - Python Configuration
 # Python 3.11+ required
 
 [build-system]
@@ -6,12 +6,13 @@ requires = ["setuptools>=69", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "github-copilot-ai-template"
+name = "plex-scripts"
 dynamic = ["version"]
-description = "Template repository for GitHub Copilot AI projects"
+description = "Plex automation scripts for TMDB poster and art selection"
 requires-python = ">=3.11"
 dependencies = [
-    "PyYAML>=6.0.2",
+    "PlexAPI>=4.15.0",
+    "urwid>=2.1.2",
 ]
 
 [project.optional-dependencies]
@@ -25,25 +26,24 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["scripts*"]
+where = ["src"]
+include = ["plex_scripts*"]
 
 [tool.setuptools-scm]
 
 [tool.coverage.run]
 relative_files = true
+source = ["src/plex_scripts"]
 omit = [
     "*/test_*.py",
     "*/tests/*",
     "*/conftest.py",
-    "**/run_in_repo_venv.py",
-    "**/remote_probe.py",
 ]
 
 [tool.coverage.paths]
 source = [
-    "scripts",
-    "*/repo-template/scripts",
+    "src/plex_scripts",
+    "*/plex-scripts/src/plex_scripts",
 ]
 
 [tool.coverage.report]
@@ -83,7 +83,7 @@ ignore = [
 "__init__.py" = ["F401"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["scripts"]
+known-first-party = ["plex_scripts"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -100,7 +100,7 @@ warn_return_any = true
 warn_unused_configs = true
 
 [tool.pytest.ini_options]
-testpaths = ["scripts"]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 
