@@ -1,0 +1,5 @@
+---
+# Super-Linter markdownlint configuration.
+# Extends the root .markdownlint.yaml — keep rules in sync.
+extends: ../../.markdownlint.yaml
+...

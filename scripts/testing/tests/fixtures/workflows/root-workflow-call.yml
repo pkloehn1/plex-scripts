@@ -1,0 +1,16 @@
+---
+name: Root
+
+permissions: {}
+
+on:
+  workflow_call:
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - run: echo hi
+...

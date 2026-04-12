@@ -1,0 +1,14 @@
+---
+version: 1
+nodes:
+  - hostname: node-a
+    roles: []
+    platform: Ubuntu
+    cpu: {model: null, cores: null, threads: null}
+    memory_gb: null
+    gpus: []
+    storage: []
+    software: {apt_manual: [], snaps: [], other: []}
+    status: active
+    notes: null
+...

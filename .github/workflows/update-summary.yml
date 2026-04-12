@@ -1,0 +1,64 @@
+---
+# Regenerate the PR body from branch commits when a maintainer
+# posts /update-summary as a PR comment.
+name: Update PR Summary
+
+on:
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  update-summary:
+    if: >-
+      github.event.issue.pull_request
+      && github.event.issue.state == 'open'
+      && (github.event.comment.author_association == 'OWNER'
+        || github.event.comment.author_association == 'MEMBER'
+        || github.event.comment.author_association == 'COLLABORATOR')
+      && startsWith(github.event.comment.body, '/update-summary')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read        # checkout
+      pull-requests: write  # update PR body
+      issues: write         # add reaction to trigger comment
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Regenerate PR summary
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 -m scripts.github.pr_upsert \
+            --repo "${{ github.repository }}" \
+            --number "${{ github.event.issue.number }}" \
+            --auto-summary \
+            --base-branch main
+
+      - name: React to trigger comment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api \
+            --method POST \
+            "/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content='+1'
+...

@@ -1,0 +1,170 @@
+---
+name: Pytest Coverage
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  merge_group:
+    branches:
+      - main
+    types:
+      - checks_requested
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  test:
+    name: Test ${{ matrix.display }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+      pull-requests: read
+      statuses: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: ci
+            test_path: scripts/ci/tests
+            cov_path: scripts/ci
+            display: CI
+          - package: common
+            test_path: scripts/common/tests
+            cov_path: scripts/common
+            display: COMMON
+          - package: context-validator
+            test_path: scripts/context_validator/tests
+            cov_path: scripts/context_validator
+            display: CONTEXT_VALIDATOR
+          - package: dev
+            test_path: scripts/dev/tests
+            cov_path: scripts/dev
+            display: DEV
+          - package: devops
+            test_path: scripts/devops/tests
+            cov_path: scripts/devops
+            display: DEVOPS
+          - package: github
+            test_path: scripts/github/tests
+            cov_path: scripts/github
+            display: GITHUB
+          - package: inventory
+            test_path: scripts/inventory/tests
+            cov_path: scripts/inventory
+            display: INVENTORY
+          - package: linting
+            test_path: scripts/linting/tests
+            cov_path: scripts/linting
+            display: LINTING
+          - package: precommit
+            test_path: scripts/precommit/tests
+            cov_path: scripts/precommit
+            display: PRECOMMIT
+          - package: testing-hooks
+            test_path: scripts/testing/hooks/tests
+            cov_path: scripts/testing/hooks
+            display: TESTING_HOOKS
+          - package: testing
+            test_path: scripts/testing/tests
+            cov_path: scripts/testing
+            cov_config: .github/coverage/testing.toml
+            display: TESTING
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install '.[dev]'
+
+      - name: Run pytest (${{ matrix.display }})
+        env:
+          PYTHONWARNINGS: default
+          TEST_PATH: ${{ matrix.test_path }}
+          COV_PATH: ${{ matrix.cov_path }}
+          PACKAGE: ${{ matrix.package }}
+          COV_CONFIG_FLAG: ${{ matrix.cov_config && format('--cov-config={0}', matrix.cov_config) || '' }}
+        run: |
+          mkdir -p reports
+          python -m pytest -vv \
+            "${TEST_PATH}" \
+            --log-cli-level=INFO \
+            --cov="${COV_PATH}" \
+            ${COV_CONFIG_FLAG:+"${COV_CONFIG_FLAG}"} \
+            --cov-report=term-missing \
+            --cov-fail-under=100 \
+            --junitxml="reports/pytest-${PACKAGE}.xml"
+
+      - name: Test Report (${{ matrix.display }})
+        uses: dorny/test-reporter@v3
+        if: ${{ !cancelled() }}
+        with:
+          name: "--> Tested: ${{ matrix.display }}"
+          path: reports/pytest-${{ matrix.package }}.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: Report status context
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        uses: ./.github/actions/report-status-context
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          job-status: ${{ job.status }}
+          status-context: "--> Tested: ${{ matrix.display }}"
+          target-url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  all-tests-passed:
+    name: All Tests Passed
+    if: ${{ always() }}
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+    steps:
+      - name: Check test results
+        env:
+          MATRIX_RESULT: ${{ needs.test.result }}
+        run: |
+          if [[ "${MATRIX_RESULT}" != "success" ]]; then
+            printf 'Test matrix failed: %s\n' "${MATRIX_RESULT}"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Report status context
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        uses: ./.github/actions/report-status-context
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          job-status: ${{ job.status }}
+          status-context: "All Tests Passed"
+          target-url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+...

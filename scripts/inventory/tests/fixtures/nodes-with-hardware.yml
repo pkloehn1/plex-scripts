@@ -1,0 +1,25 @@
+---
+version: 1
+nodes:
+  - hostname: prd-srv-control-01
+    roles: [control]
+    platform: Ubuntu 24.04
+    kernel: 6.8.0-99-generic
+    network:
+      interfaces:
+        - name: eth0
+          addresses: ["__CIDR__"]
+    cpu:
+      model: Intel(R) Xeon
+      cores: 4
+      threads: 8
+    memory_gb: 32
+    gpus: ["Intel UHD"]
+    storage: ["nvme0n1 1T"]
+    software:
+      apt_manual: ["htop"]
+      snaps: []
+      other: ["docker version 27.0.0"]
+    status: active
+    notes: null
+...

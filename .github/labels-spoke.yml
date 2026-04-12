@@ -1,0 +1,145 @@
+---
+# Spoke-specific labels — synced to spokes as a starting point, each repo may customize
+# Convention: file MUST start with --- on line 1 (required for YAML merge)
+# Sync with: .github/workflows/labels-sync.yml (weekly Monday 06:30 UTC + manual)
+
+# Swarm — Ocean (#0b7285, unchanged)
+- name: swarm/networking
+  color: 0b7285
+  description: Overlay networks, ingress/routing mesh, published ports
+- name: swarm/scheduling
+  color: 0b7285
+  description: Placement constraints, replicas/global, node labels
+- name: swarm/secrets-configs
+  color: 0b7285
+  description: Swarm secrets/configs wiring and *_FILE patterns
+- name: swarm/storage
+  color: 0b7285
+  description: Volume drivers, bind mounts, stateful persistence under Swarm
+- name: swarm/updates-health
+  color: 0b7285
+  description: Update/rollback config, healthchecks, restart policy
+
+# Systems — Teal (#0d9488)
+- name: system/control-node
+  color: 0d9488
+  description: Control node specific
+- name: system/edge-node
+  color: 0d9488
+  description: Edge node specific
+- name: system/dmz
+  color: 0d9488
+  description: DMZ services and ingress
+- name: system/dns
+  color: 0d9488
+  description: DNS servers and zones
+
+# Stacks — Tan (#d4a373)
+- name: stack/control
+  color: d4a373
+  description: "Swarm stack: control"
+- name: stack/edge
+  color: d4a373
+  description: "Swarm stack: edge"
+- name: stack/media-utils
+  color: d4a373
+  description: "Swarm stack: media-utils"
+- name: stack/servarr
+  color: d4a373
+  description: "Swarm stack: servarr"
+- name: stack/apim
+  color: d4a373
+  description: "Swarm stack: apim"
+
+# Services — Pale Blue (#c5def5)
+- name: service/authentik
+  color: c5def5
+  description: "Service: authentik"
+- name: service/authentik-postgres
+  color: c5def5
+  description: "Service: authentik-postgres"
+- name: service/bazarr
+  color: c5def5
+  description: "Service: bazarr"
+- name: service/bookshelf
+  color: c5def5
+  description: "Service: bookshelf"
+- name: service/cloudflare-ddns
+  color: c5def5
+  description: "Service: cloudflare-ddns"
+- name: service/crowdsec
+  color: c5def5
+  description: "Service: crowdsec"
+- name: service/docker-gc
+  color: c5def5
+  description: "Service: docker-gc"
+- name: service/huntarr
+  color: c5def5
+  description: "Service: huntarr"
+- name: service/kometa
+  color: c5def5
+  description: "Service: kometa"
+- name: service/gravitee-gateway
+  color: c5def5
+  description: "Service: gravitee-gateway"
+- name: service/gravitee-management-api
+  color: c5def5
+  description: "Service: gravitee-management-api"
+- name: service/gravitee-management-ui
+  color: c5def5
+  description: "Service: gravitee-management-ui"
+- name: service/gravitee-portal-ui
+  color: c5def5
+  description: "Service: gravitee-portal-ui"
+- name: service/lidarr
+  color: c5def5
+  description: "Service: lidarr"
+- name: service/seerr
+  color: c5def5
+  description: "Service: seerr"
+- name: service/portainer
+  color: c5def5
+  description: "Service: portainer"
+- name: service/prowlarr
+  color: c5def5
+  description: "Service: prowlarr"
+- name: service/radarr
+  color: c5def5
+  description: "Service: radarr"
+- name: service/readarr
+  color: c5def5
+  description: "Service: readarr"
+- name: service/recyclarr
+  color: c5def5
+  description: "Service: recyclarr"
+- name: service/sabnzbd
+  color: c5def5
+  description: "Service: sabnzbd"
+- name: service/servarr-postgres
+  color: c5def5
+  description: "Service: servarr-postgres"
+- name: service/socket-proxy
+  color: c5def5
+  description: "Service: socket-proxy"
+- name: service/sonarr
+  color: c5def5
+  description: "Service: sonarr"
+- name: service/swarm-cronjob
+  color: c5def5
+  description: "Service: swarm-cronjob"
+- name: service/step-ca
+  color: c5def5
+  description: "Service: step-ca"
+- name: service/traefik
+  color: c5def5
+  description: "Service: traefik"
+- name: service/traefik-to-unifi
+  color: c5def5
+  description: "Service: traefik-to-unifi"
+- name: service/unifi-network-mcp
+  color: c5def5
+  description: "Service: unifi-network-mcp"
+- name: service/uptime-kuma
+  color: c5def5
+  description: "Service: uptime-kuma"
+...

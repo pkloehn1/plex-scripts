@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/jscpd.json",
+  "absolute": true,
+  "ignore": [
+    "**/*.yml",
+    "**/*.yaml",
+    "**/.venv/**",
+    "**/.tox/**",
+    "**/.pytest_cache/**",
+    "**/.mypy_cache/**",
+    "**/.ruff_cache/**",
+    "**/build/**",
+    "**/scripts/**/tests/**",
+    "**/docs/inventory/nodes.md",
+    "**/.github/claude-code-instructions.md",
+    "**/.github/copilot-instructions.md",
+    "**/app-config/gravitee/api-imports/**"
+  ],
+  "reporters": ["console"],
+  "threshold": 3
+}

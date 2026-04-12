@@ -1,0 +1,18 @@
+# Coverage config for the scripts/testing package CI job.
+# Excludes scripts/testing/hooks/ which has its own CI job (TESTING_HOOKS).
+
+[run]
+source = ["scripts/testing"]
+omit = [
+    "scripts/testing/hooks/*",
+    "**/test_*.py",
+    "**/tests/**",
+    "**/conftest.py",
+    "**/run_in_repo_venv.py",
+    "**/remote_probe.py",
+]
+
+[report]
+exclude_also = [
+    "if __name__ == .__main__.",
+]

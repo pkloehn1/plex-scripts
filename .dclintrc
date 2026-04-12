@@ -1,0 +1,155 @@
+{
+  "$schema": "https://raw.githubusercontent.com/zavoloklom/docker-compose-linter/refs/heads/main/schemas/linter-config.schema.json",
+  "rules": {
+    "service-keys-order": [
+      1,
+      {
+        "groupOrder": [
+          "IDENTITY",
+          "LIFECYCLE",
+          "SECURITY",
+          "NETWORKING",
+          "RUNTIME",
+          "STORAGE",
+          "BEHAVIOR",
+          "RESOURCES",
+          "HEALTH",
+          "METADATA",
+          "EXTENSION"
+        ],
+        "groups": {
+          "IDENTITY": [
+            "container_name",
+            "image",
+            "build",
+            "hostname",
+            "domainname",
+            "platform",
+            "pull_policy"
+          ],
+          "LIFECYCLE": [
+            "restart",
+            "depends_on",
+            "profiles",
+            "init",
+            "scale",
+            "stop_signal",
+            "stop_grace_period",
+            "post_start",
+            "pre_stop"
+          ],
+          "SECURITY": [
+            "user",
+            "privileged",
+            "cap_add",
+            "cap_drop",
+            "security_opt",
+            "read_only",
+            "userns_mode",
+            "isolation",
+            "credential_spec",
+            "cgroup",
+            "cgroup_parent"
+          ],
+          "NETWORKING": [
+            "network_mode",
+            "networks",
+            "ports",
+            "expose",
+            "extra_hosts",
+            "dns",
+            "dns_search",
+            "dns_opt",
+            "mac_address",
+            "links",
+            "external_links"
+          ],
+          "RUNTIME": [
+            "secrets",
+            "environment",
+            "env_file",
+            "configs"
+          ],
+          "STORAGE": [
+            "volumes",
+            "volumes_from",
+            "tmpfs",
+            "shm_size"
+          ],
+          "BEHAVIOR": [
+            "entrypoint",
+            "command",
+            "working_dir",
+            "stdin_open",
+            "tty",
+            "attach",
+            "ipc",
+            "pid",
+            "uts"
+          ],
+          "RESOURCES": [
+            "deploy",
+            "logging",
+            "runtime",
+            "devices",
+            "device_cgroup_rules",
+            "gpus",
+            "group_add",
+            "blkio_config",
+            "cpu_count",
+            "cpu_percent",
+            "cpu_shares",
+            "cpu_period",
+            "cpu_quota",
+            "cpu_rt_runtime",
+            "cpu_rt_period",
+            "cpus",
+            "cpuset",
+            "mem_limit",
+            "mem_reservation",
+            "mem_swappiness",
+            "memswap_limit",
+            "oom_kill_disable",
+            "oom_score_adj",
+            "pids_limit",
+            "storage_opt",
+            "sysctls",
+            "ulimits"
+          ],
+          "HEALTH": [
+            "healthcheck"
+          ],
+          "METADATA": [
+            "labels",
+            "annotations"
+          ],
+          "EXTENSION": [
+            "extends",
+            "develop",
+            "provider",
+            "use_api_socket"
+          ]
+        }
+      }
+    ],
+    "top-level-properties-order": [
+      1,
+      {
+        "customOrder": [
+          "name",
+          "include",
+          "services",
+          "networks",
+          "volumes",
+          "configs",
+          "secrets"
+        ]
+      }
+    ],
+    "require-project-name-field": 1,
+    "services-alphabetical-order": 0,
+    "service-dependencies-alphabetical-order": 0,
+    "service-ports-alphabetical-order": 0,
+    "no-unbound-port-interfaces": 0
+  }
+}

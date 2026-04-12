@@ -1,0 +1,14 @@
+---
+name: Bad
+
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+...

@@ -1,0 +1,72 @@
+// GitHub Ruleset export (documented)
+// Repo: pkloehn1/repo-template
+// Ruleset: main
+// Target: default branch (~DEFAULT_BRANCH)
+// Notes:
+// - This is a curated export for documentation and diff review.
+// - Volatile metadata (node_id, timestamps, links, current_user_can_bypass) is intentionally omitted.
+// - This tool is one-way: it never writes ruleset configuration back to GitHub.
+{
+  "name": "main",
+  "target": "branch",
+  "source_type": "Repository",
+  "source": "pkloehn1/repo-template",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": [
+        "~DEFAULT_BRANCH"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "required_signatures"
+    },
+    {
+      "type": "required_linear_history"
+    },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": true,
+        "required_reviewers": [],
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true,
+        "allowed_merge_methods": [
+          "squash"
+        ]
+      }
+    },
+    {
+      "type": "copilot_code_review",
+      "parameters": {
+        "review_on_push": true,
+        "review_draft_pull_requests": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "Lint Code Base",
+            "integration_id": 15368
+          }
+        ]
+      }
+    }
+  ],
+  "bypass_actors": []
+}

@@ -1,0 +1,18 @@
+{
+  "[python]": {
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true
+  },
+  "python.analysis.typeCheckingMode": "basic",
+  "python.linting.flake8Enabled": false,
+  "python.linting.pylintEnabled": false,
+  "snyk.advanced.autoSelectOrganization": true,
+  "sonarlint.connectedMode.project": {
+    "connectionId": "pkloehn1",
+    "projectKey": "pkloehn1_repo-template"
+  }
+}

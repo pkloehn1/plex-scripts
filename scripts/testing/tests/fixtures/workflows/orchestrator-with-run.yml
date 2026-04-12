@@ -1,0 +1,16 @@
+---
+name: Orch
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - run: echo nope
+...

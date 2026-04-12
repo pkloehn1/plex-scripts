@@ -1,0 +1,25 @@
+---
+# Markdownlint configuration — single source of truth.
+# Super-Linter reads .github/linters/.markdownlint.yml which extends this file.
+default: true
+
+# MD007/ul-indent: disabled — editorconfig enforces indent_size=2 for markdown,
+# but CommonMark requires 3-space indent for sub-lists under numbered items.
+# These are irreconcilable; editorconfig governs indentation instead.
+MD007: false
+
+# MD029/ol-prefix: disabled — blank lines between numbered items with sub-lists
+# cause markdownlint to see each item as a separate single-item list, making
+# any prefix style enforcement unreliable.
+MD029: false
+
+# MD013/line-length
+MD013:
+  line_length: 200
+  code_blocks: false
+  tables: false
+
+# MD033/no-inline-html: allow common HTML elements for badges and formatting
+MD033:
+  allowed_elements: ["div", "span", "img", "br", "p", "a"]
+...

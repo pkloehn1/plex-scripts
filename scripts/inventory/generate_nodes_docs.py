@@ -1,0 +1,270 @@
+from __future__ import annotations
+
+import re
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from ._nodes_yml_parsing import ParsedNodeBase
+from ._nodes_yml_parsing import parse_node_base_fields as _parse_node_base_fields
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_NODES_YML = _REPO_ROOT / "docs" / "inventory" / "nodes.yml"
+_NODES_MD = _REPO_ROOT / "docs" / "inventory" / "nodes.md"
+
+_TEXT_FENCE_OPEN = "```text"
+_FENCE_CLOSE = "```"
+
+
+def _md_anchor(header: str) -> str:
+    """Render a GitHub-style anchor slug for a Markdown header.
+
+    This is intentionally minimal and tailored to our hostname headers.
+    """
+    slug = header.strip().lower()
+    slug = re.sub(r"[^a-z0-9\-\s]", "", slug)
+    slug = slug.replace(" ", "-")
+    slug = re.sub(r"-+", "-", slug).strip("-")
+    return slug
+
+
+@dataclass(frozen=True, slots=True)
+class NodeRecord(ParsedNodeBase):
+    network_interfaces: list[str]
+    storage: list[str]
+
+
+def _fmt(value: object) -> str:
+    if value is None:
+        return "TBD"
+    if isinstance(value, str) and value.strip() == "":
+        return "TBD"
+    return str(value)
+
+
+def _fmt_list(values: list[str]) -> str:
+    if not values:
+        return "-"
+    return ", ".join(values)
+
+
+def _cpu_summary(node: NodeRecord) -> str:
+    model = node.cpu_model
+    cores = node.cpu_cores
+    threads = node.cpu_threads
+
+    parts: list[str] = []
+    if model:
+        parts.append(model)
+
+    if cores is not None and threads is not None:
+        parts.append(f"{cores}C/{threads}T")
+    elif cores is not None:
+        parts.append(f"{cores}C")
+    elif threads is not None:
+        parts.append(f"{threads}T")
+
+    if not parts:
+        return "TBD"
+
+    return " ".join(parts)
+
+
+def _load_nodes(yml_path: Path) -> list[NodeRecord]:
+    raw = yaml.safe_load(yml_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("nodes.yml must be a mapping")
+
+    nodes = raw.get("nodes")
+    if not isinstance(nodes, list):
+        raise ValueError("nodes.yml must define a 'nodes' list")
+
+    records = [_parse_node_mapping(item) for item in nodes]
+    return sorted(records, key=lambda record: record.hostname)
+
+
+def _parse_node_mapping(node: object) -> NodeRecord:
+    base, interfaces = _parse_node_base_fields(node)
+    storage = _normalize_storage(node.get("storage") if isinstance(node, dict) else None)
+    network_summaries = sorted(f"{iface.name}: {', '.join(iface.addresses)}" for iface in interfaces)
+    return NodeRecord(
+        **asdict(base),
+        network_interfaces=network_summaries,
+        storage=storage,
+    )
+
+
+def _normalize_storage(storage_raw: object) -> list[str]:
+    if storage_raw is None:
+        return []
+    if not isinstance(storage_raw, list):
+        raise ValueError("storage must be a list")
+
+    rendered: list[str] = []
+    for item in storage_raw:
+        rendered_item = _render_storage_item(item)
+        if rendered_item:
+            rendered.append(rendered_item)
+
+    return rendered
+
+
+def _render_storage_item(item: object) -> str | None:
+    if item is None:
+        return None
+    if isinstance(item, str):
+        value = item.strip()
+        return value or None
+    if isinstance(item, dict):
+        return _render_storage_dict(item)
+    raise ValueError("storage list items must be strings or mappings")
+
+
+def _render_storage_dict(item: dict[str, Any]) -> str:
+    device_type = item.get("type")
+    size_gb = item.get("size_gb")
+    note = item.get("notes")
+
+    parts: list[str] = []
+
+    if isinstance(device_type, str) and device_type.strip():
+        parts.append(device_type.strip())
+
+    if isinstance(size_gb, int):
+        parts.append(f"{size_gb}GB")
+    elif size_gb is not None:
+        raise ValueError("storage.size_gb must be int or null")
+
+    if isinstance(note, str) and note.strip():
+        parts.append(note.strip())
+    elif note is not None:
+        raise ValueError("storage.notes must be string or null")
+
+    return " ".join(parts)
+
+
+def _software_summary(node: NodeRecord) -> str:
+    apt_count = len(node.software_apt_manual)
+    snap_count = len(node.software_snaps)
+    other_count = len(node.software_other)
+
+    if apt_count == 0 and snap_count == 0 and other_count == 0:
+        return "-"
+
+    parts: list[str] = []
+    if apt_count:
+        parts.append(f"apt:{apt_count}")
+    if snap_count:
+        parts.append(f"snap:{snap_count}")
+    if other_count:
+        parts.append(f"other:{other_count}")
+
+    return ", ".join(parts)
+
+
+def render_nodes_markdown(records: list[NodeRecord]) -> str:
+    lines: list[str] = []
+    lines.append("# Node Capabilities (Generated)")
+    lines.append("")
+    lines.append("This document is generated from `docs/inventory/nodes.yml`.")
+    lines.append("Do not edit this file directly.")
+    lines.append("")
+    lines.append("Run:")
+    lines.append("")
+    lines.append("```bash")
+    lines.append("python -m scripts.inventory.generate_nodes_docs")
+    lines.append("```")
+    lines.append("")
+
+    lines.append("## Table of Contents")
+    lines.append("")
+    for node in records:
+        anchor = _md_anchor(node.hostname)
+        lines.append(f"- [{node.hostname}](#{anchor})")
+    lines.append("")
+
+    def add_row(group: str, field: str, value: str) -> None:
+        lines.append(f"| {group} | {field} | {value} |")
+
+    def fmt_count(count: int) -> str:
+        return str(count) if count else "-"
+
+    for node in records:
+        lines.append(f"## {node.hostname}")
+        lines.append("")
+
+        lines.append("| Group | Field | Value |")
+        lines.append("| --- | --- | --- |")
+
+        add_row("Meta", "Roles", _fmt_list(node.roles))
+        add_row("Meta", "Platform", _fmt(node.platform))
+        add_row("Meta", "Kernel", _fmt(node.kernel_release))
+        add_row("Network", "Interfaces", _fmt_list(node.network_interfaces))
+        add_row("Meta", "Status", _fmt(node.status))
+        add_row("Meta", "Notes", _fmt(node.notes))
+
+        add_row("Hardware", "CPU model", _fmt(node.cpu_model))
+        add_row("Hardware", "CPU cores", _fmt(node.cpu_cores))
+        add_row("Hardware", "CPU threads", _fmt(node.cpu_threads))
+        add_row("Hardware", "Memory (GB)", _fmt(node.memory_gb))
+        add_row("Hardware", "GPUs", _fmt_list(node.gpus))
+        add_row("Hardware", "Storage", _fmt_list(node.storage))
+
+        add_row(
+            "Software",
+            "apt-mark (manual) count",
+            fmt_count(len(node.software_apt_manual)),
+        )
+        add_row("Software", "snap count", fmt_count(len(node.software_snaps)))
+        add_row("Software", "other count", fmt_count(len(node.software_other)))
+
+        lines.append("")
+        lines.append("**Software**")
+        lines.append("")
+        lines.append("This section captures non-stock software signals (manual packages, snaps, and other tools).")
+        lines.append("")
+
+        if node.software_apt_manual:
+            lines.append("**apt-mark (manual)**")
+            lines.append("")
+            lines.append(_TEXT_FENCE_OPEN)
+            lines.extend(node.software_apt_manual)
+            lines.append(_FENCE_CLOSE)
+            lines.append("")
+
+        if node.software_snaps:
+            lines.append("**snaps**")
+            lines.append("")
+            lines.append(_TEXT_FENCE_OPEN)
+            lines.extend(node.software_snaps)
+            lines.append(_FENCE_CLOSE)
+            lines.append("")
+
+        if node.software_other:
+            lines.append("**other**")
+            lines.append("")
+            lines.append(_TEXT_FENCE_OPEN)
+            lines.extend(node.software_other)
+            lines.append(_FENCE_CLOSE)
+            lines.append("")
+
+        if not node.software_apt_manual and not node.software_snaps and not node.software_other:
+            lines.append("(none recorded)")
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+def write_nodes_markdown(yml_path: Path = _NODES_YML, md_path: Path = _NODES_MD) -> None:
+    records = _load_nodes(yml_path)
+    md_path.write_text(render_nodes_markdown(records), encoding="utf-8")
+
+
+def main() -> None:  # pragma: no cover
+    write_nodes_markdown()
+
+
+if __name__ == "__main__":
+    main()

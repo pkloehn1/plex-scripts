@@ -1,0 +1,53 @@
+---
+name: Labels Sync
+
+on:
+  schedule:
+    - cron: "30 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run in dry-run mode (no changes applied)
+        type: boolean
+        default: true
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: python -m pip install '.[dev]'
+
+      - name: Merge hub and spoke label files
+        run: python -m scripts.ci.merge_label_files
+
+      - name: Sync labels from merged file
+        uses: crazy-max/ghaction-github-labeler@v6
+        with:
+          yaml-file: .github/labels-merged.yml
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+...

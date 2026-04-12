@@ -1,0 +1,5 @@
+---
+nodes:
+  - hostname: node-a
+  - hostname: node-b
+...

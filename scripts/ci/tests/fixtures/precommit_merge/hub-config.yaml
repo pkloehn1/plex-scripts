@@ -1,0 +1,20 @@
+---
+x-python-wrapper: &python_wrapper
+  entry: scripts/precommit/run_python
+  language: system
+
+repos:
+  - repo: local
+    hooks:
+      - id: hub-hook-a
+        name: Hub Hook A
+        <<: *python_wrapper
+  - repo: https://github.com/example/hooks
+    rev: v1.0.0
+    hooks:
+      - id: hub-hook-b
+        name: Hub Hook B
+
+default_stages: [pre-commit]
+fail_fast: false
+...

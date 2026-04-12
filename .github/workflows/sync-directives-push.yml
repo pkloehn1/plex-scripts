@@ -1,0 +1,128 @@
+---
+name: Sync AI Directives → targets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # AI directives
+      - CLAUDE.md
+      - .github/copilot-instructions.md
+      - .github/claude-code-instructions.md
+      - .github/instructions/*.instructions.md
+      # Claude Code project config
+      - .claude/**
+      # Style guides and repo standards
+      - docs/repository-standards/**/*.md
+      # Linter / formatter configs
+      - .editorconfig
+      - .pre-commit-config.yaml
+      - .dclintrc
+      - .checkov.yaml
+      - .github/linters/**
+      # Repo templates
+      - .github/ISSUE_TEMPLATE/**
+      - .github/pull_request_template.md
+      # CI scripts and shared infrastructure
+      - .github/workflows/sync-directives-push.yml
+      - .github/workflows/sync-directives-pull.yml
+      - .github/workflows/issue-priority-triage.yml
+      - .github/image-service-map.json
+      - scripts/ci/**
+      - scripts/github/**
+      - scripts/common/**
+      - scripts/__init__.py
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: sync-directives-push
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      targets: ${{ steps.parse.outputs.targets || '[]' }}
+    steps:
+      - name: Check for sync token
+        shell: bash
+        env:
+          SYNC_PAT_SET: ${{ secrets.REPO_SYNC_PAT != '' }}
+        run: |
+          echo "HAS_TOKEN=${SYNC_PAT_SET}" >> "$GITHUB_ENV"
+          if [ "${SYNC_PAT_SET}" != "true" ]; then
+            echo "::notice::REPO_SYNC_PAT secret not configured - skipping sync."
+          fi
+
+      - name: Checkout
+        if: env.HAS_TOKEN == 'true'
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Read target repos from config
+        if: env.HAS_TOKEN == 'true'
+        id: parse
+        uses: ./.github/actions/parse-sync-targets
+
+  sync:
+    needs: prepare
+    if: needs.prepare.outputs.targets != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.prepare.outputs.targets) }}
+
+    steps:
+      - name: Checkout source (this repo)
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          path: source
+
+      - name: Checkout target
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ matrix.target.repo }}
+          token: ${{ secrets.REPO_SYNC_PAT }}
+          persist-credentials: false
+          path: target
+
+      - name: Compute branch slug
+        id: branch
+        shell: bash
+        env:
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          echo "slug=${REPO_NAME//\//-}" >> "$GITHUB_OUTPUT"
+
+      - name: Sync directive files
+        uses: ./source/.github/actions/run-sync-directives
+        with:
+          source: source
+          target: target
+          target-repo: ${{ matrix.target.repo }}
+          config: source/.github/sync-directives.yml
+          pythonpath: source
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.REPO_SYNC_PAT }}
+          path: target
+          branch: sync/ai-directives-from-${{ steps.branch.outputs.slug }}
+          title: "chore: sync AI directives from ${{ github.repository }}"
+          body: |
+            Automated sync of AI directive files from
+            [${{ github.repository }}](https://github.com/${{ github.repository }}).
+          commit-message: "chore: sync AI directives from ${{ github.repository }}"
+          committer: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          delete-branch: true
+...

@@ -1,0 +1,14 @@
+---
+name: "Validate Context Limits"
+description: "Validates that instruction files adhere to token limits per provider."
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: python3 -m pip install -e ".[dev]"
+
+    - name: Run validation script
+      shell: bash
+      run: python3 -m scripts.validate_context_limits
+...

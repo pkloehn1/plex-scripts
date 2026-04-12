@@ -1,0 +1,50 @@
+---
+name: "Run Sync Directives"
+description: "Sync directive files between source and target repositories."
+inputs:
+  source:
+    description: "Path to source repository checkout"
+    required: true
+  target:
+    description: "Path to target repository checkout"
+    required: true
+  target-repo:
+    description: "Target repository name (owner/repo)"
+    required: true
+  config:
+    description: "Path to sync-directives.yml config"
+    required: true
+  pythonpath:
+    description: "PYTHONPATH for script imports (checkout containing scripts/)"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install pyyaml
+      shell: bash
+      run: python3 -m pip install --quiet pyyaml
+
+    - name: Run sync
+      shell: bash
+      env:
+        PYTHONPATH: ${{ inputs.pythonpath }}
+        SYNC_SOURCE: ${{ inputs.source }}
+        SYNC_TARGET: ${{ inputs.target }}
+        SYNC_TARGET_REPO: ${{ inputs.target-repo }}
+        SYNC_CONFIG: ${{ inputs.config }}
+      run: |
+        python3 -m scripts.ci.sync_directives \
+          --source "$SYNC_SOURCE" \
+          --target "$SYNC_TARGET" \
+          --target-repo "$SYNC_TARGET_REPO" \
+          --config "$SYNC_CONFIG"
+
+    - name: Validate merged pre-commit config
+      shell: bash
+      env:
+        PYTHONPATH: ${{ inputs.pythonpath }}
+        SYNC_TARGET: ${{ inputs.target }}
+      run: |
+        python3 -m scripts.ci.validate_precommit_config \
+          --config "${SYNC_TARGET}/.pre-commit-config.yaml"
+...

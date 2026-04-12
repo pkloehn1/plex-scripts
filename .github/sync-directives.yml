@@ -1,0 +1,258 @@
+---
+# Repository standards to keep in sync across repositories.
+#
+# Architecture: hub-and-spoke with repo-template as the hub.
+#   - repo-template holds the canonical superset of all standards.
+#   - Active repos list only repo-template as their target.
+#   - repo-template lists all active repos as its targets.
+#   - This avoids N×N mesh traffic; changes flow through the hub.
+#
+# This file is part of the template and is inherited by every repo
+# created from pkloehn1/repo-template.  Each repo customises only
+# the 'targets' and 'exclude' sections.
+#
+# Tier 1a: explicit files listed individually (stable core).
+# Tier 1b: directory patterns that auto-sync new files.
+#
+# Add file paths under 'exclude' to prevent technology-specific
+# files (Docker Compose linters, Ansible style guides, etc.) from
+# being synced to repos that do not use them.
+
+targets:
+  - repo: pkloehn1/docker-swarm-homelab
+  - repo: pkloehn1/docker-compose-homelab
+  - repo: pkloehn1/kloehnwars-homelab
+
+hub_only:
+  # --- Hub-specific workflows (spokes define their own CI) ---
+  - .github/workflows/calver-tag.yml
+  - .github/workflows/pre-commit.yml
+  - .github/workflows/pytest-coverage.yml
+  - .github/workflows/super-linter.yml
+  - .github/workflows/update-summary.yml
+  - .github/workflows/validate-copilot-limits.yml
+  # --- Hub-specific composite actions (glob) ---
+  - .github/actions/check-sync-token/*.yml
+  - .github/actions/validate-context/*.yml
+  # --- Hub-specific configs ---
+  - .github/dependabot.yml
+  - .github/super-linter.env
+  - .github/sync-directives.yml
+  # --- Hub-specific AI prompts (glob) ---
+  - .github/prompts/*.prompt.md
+  # --- Hub-specific docs (non-synced formats) ---
+  - docs/ci/github-rulesets/required-contexts.yml
+  # --- Spoke customization (examples for spoke repos) ---
+  # Spokes: add entries here for files that exist only in the hub and
+  # should not trigger completeness-check violations in spoke repos.
+  # Examples:
+  #   - .github/workflows/spoke-specific-workflow.yml
+  #   - scripts/spoke_only_tool.py
+  #   - docs/spoke-specific/*.md
+
+files:
+  # --- AI directive content ---
+  - CLAUDE.md
+  - .github/copilot-instructions.md
+  - .github/claude-code-instructions.md
+  - .claude/settings.json
+  # --- Labeling infrastructure ---
+  - .github/labels-hub.yml
+  - .github/labels-spoke.yml
+  - .github/labeler.yml
+  # --- IDE configuration ---
+  - .vscode/settings.json
+  # --- Build shortcuts ---
+  - Makefile
+  # --- Linter / formatter configs ---
+  - .editorconfig
+  - .pre-commit-config.yaml
+  - .dclintrc
+  - .checkov.yaml
+  # --- Repo templates ---
+  - .github/pull_request_template.md
+  # --- Labeling workflows ---
+  - .github/workflows/auto-labeler.yml
+  - .github/workflows/labels-sync.yml
+  # --- Sync infrastructure (self-updating) ---
+  - .github/workflows/sync-directives-push.yml
+  - .github/workflows/sync-directives-pull.yml
+  - .github/actions/parse-sync-targets/action.yml
+  - .github/actions/run-sync-directives/action.yml
+  # --- Issue priority triage ---
+  - .github/workflows/issue-priority-triage.yml
+  - .github/image-service-map.json
+  # --- CI automation (glob: .py files) ---
+  - scripts/ci/*.py
+  - scripts/ci/tests/*.py
+  # --- CI automation (non-.py) ---
+  - scripts/ci/README.md
+  # --- GitHub CLI helpers (glob: .py files) ---
+  - scripts/github/*.py
+  - scripts/github/README.md
+  # --- DevOps helpers (glob) ---
+  - scripts/devops/*.py
+  - scripts/devops/tests/*.py
+  # --- Common utilities (glob) ---
+  - scripts/common/*.py
+  # --- Dev bootstrap (1-click setup) ---
+  - scripts/dev/bootstrap_venv.py
+  - scripts/dev/bootstrap_venv.sh
+  - scripts/dev/fetch_docs.py
+  # --- Pre-commit infrastructure ---
+  - scripts/precommit/run_python
+  - scripts/precommit/*.py
+  # --- Context validator (glob) ---
+  - scripts/context_validator/*.py
+  - scripts/context_validator/tests/*.py
+  # --- Root scripts ---
+  - scripts/validate_context_limits.py
+  - scripts/run_super_linter_hook.py
+  - scripts/local_super_linter.sh
+  - scripts/copilot-context-health.conf
+  # --- Inventory context ---
+  - docs/inventory/homelab-environment-context.md
+  # --- CalVer release notes config ---
+  - cliff.toml
+  # --- Markdownlint root config ---
+  - .markdownlint.yaml
+  # --- Package markers (recursive glob) ---
+  - scripts/**/__init__.py
+
+directories:
+  # --- Claude Code project config ---
+  - path: .claude/rules
+    pattern: "*.md"
+  - path: .claude/skills
+    pattern: "*/SKILL.md"
+  - path: .claude/agents
+    pattern: "*.md"
+  # --- Per-package coverage configs ---
+  - path: .github/coverage
+    pattern: "*.toml"
+  # --- GitHub composite actions ---
+  - path: .github/actions/report-status-context
+    pattern: "*.yml"
+  # --- GitHub instructions ---
+  - path: .github/instructions
+    pattern: "*.instructions.md"
+  - path: .github/linters
+    pattern: "*"
+  - path: .github/ISSUE_TEMPLATE
+    pattern: "*"
+  # --- Repository standards ---
+  - path: docs/repository-standards
+    pattern: "*.md"
+  - path: docs/repository-standards/style-guides
+    pattern: "*.md"
+  - path: docs/automation/runbooks
+    pattern: "*.md"
+  - path: docs/ci
+    pattern: "*.md"
+  - path: docs/ci/github-rulesets
+    pattern: "*.jsonc"
+  - path: docs/architecture
+    pattern: "*.md"
+  - path: docs/inventory/services
+    pattern: "_template-*.md"
+  # --- Testing & pre-commit hooks ---
+  - path: scripts/testing
+    pattern: "*.py"
+  - path: scripts/testing/tests
+    pattern: "*.py"
+  - path: scripts/testing/hooks
+    pattern: "*.py"
+  - path: scripts/testing/hooks/tests
+    pattern: "*.py"
+  - path: scripts/testing/hooks/fixtures/workflows
+    pattern: "*.yml"
+  # --- GitHub CLI helper tests ---
+  - path: scripts/github/tests
+    pattern: "*.py"
+  # --- Common utility tests ---
+  - path: scripts/common/tests
+    pattern: "*.py"
+  # --- Dev bootstrap tests ---
+  - path: scripts/dev/tests
+    pattern: "*.py"
+  # --- Pre-commit tests ---
+  - path: scripts/precommit/tests
+    pattern: "*.py"
+  # --- CI test fixtures ---
+  - path: scripts/ci/tests/fixtures/precommit_merge
+    pattern: "*.yaml"
+  # --- Testing hook test fixtures ---
+  - path: scripts/testing/tests/fixtures/workflows
+    pattern: "*.yml"
+  # --- Inventory test fixtures ---
+  - path: scripts/inventory/tests/fixtures
+    pattern: "*"
+  # --- Linting ---
+  - path: scripts/linting
+    pattern: "*.py"
+  - path: scripts/linting
+    pattern: "*.sh"
+  - path: scripts/linting/tests
+    pattern: "*.py"
+  # --- Inventory ---
+  - path: scripts/inventory
+    pattern: "*.py"
+  - path: scripts/inventory/tests
+    pattern: "*.py"
+  # --- Edge node scripts ---
+  - path: scripts/edge
+    pattern: "*.sh"
+  # --- TrueNAS scripts ---
+  - path: scripts/truenas
+    pattern: "*.sh"
+
+# Per-target file exclusions (relative to repo root).
+# Listed files are skipped in both push and pull directions.
+# Spoke-only extensions are protected here so hub sync never deletes them.
+exclude:
+  pkloehn1/docker-swarm-homelab:
+    # --- Spoke-specific testing hooks ---
+    - scripts/testing/hooks/verify_recyclarr_profiles.py
+    - scripts/testing/hooks/tests/test_verify_recyclarr_profiles.py
+    # --- Spoke-specific linting ---
+    - scripts/linting/tests/test_yamllint_custom_tags.py
+    # --- Compose-only linting (not applicable to Swarm deployment) ---
+    - scripts/linting/lint_compose.py
+    - scripts/linting/tests/test_lint_compose.py
+    # --- Spoke-specific devops health checkers ---
+    - scripts/devops/check_apim_health.py
+    - scripts/devops/check_crowdsec_health.py
+    - scripts/devops/debug_edge_stack_flow.py
+    - scripts/devops/tests/test_check_apim_health.py
+    - scripts/devops/tests/test_check_crowdsec_health.py
+    # --- Spoke-specific CI decisions ---
+    - scripts/ci/should_run_lint_traefik_swarm.py
+    - scripts/ci/tests/test_should_run_lint_traefik_swarm.py
+  pkloehn1/docker-compose-homelab:
+    # --- Swarm-only linting (not applicable to Compose deployment) ---
+    - scripts/linting/lint_swarm.py
+    - scripts/linting/tests/test_lint_swarm.py
+    # --- Spoke-specific CI decisions (swarm) ---
+    - scripts/ci/should_run_lint_traefik_swarm.py
+    - scripts/ci/tests/test_should_run_lint_traefik_swarm.py
+  pkloehn1/kloehnwars-homelab:
+    # --- Compose-only linting (not applicable to IaC/K3s deployment) ---
+    - scripts/linting/lint_compose.py
+    - scripts/linting/tests/test_lint_compose.py
+    # --- Swarm-only linting (not applicable to IaC/K3s deployment) ---
+    - scripts/linting/lint_swarm.py
+    - scripts/linting/tests/test_lint_swarm.py
+    - scripts/ci/should_run_lint_traefik_swarm.py
+    - scripts/ci/tests/test_should_run_lint_traefik_swarm.py
+    # --- Spoke-specific health checks (not applicable) ---
+    - scripts/devops/check_apim_health.py
+    - scripts/devops/check_crowdsec_health.py
+    - scripts/devops/debug_edge_stack_flow.py
+    - scripts/devops/tests/test_check_apim_health.py
+    - scripts/devops/tests/test_check_crowdsec_health.py
+    # --- Media automation (not applicable) ---
+    - scripts/testing/hooks/verify_recyclarr_profiles.py
+    - scripts/testing/hooks/tests/test_verify_recyclarr_profiles.py
+    # --- Spoke-specific linting tests ---
+    - scripts/linting/tests/test_yamllint_custom_tags.py
+...

@@ -1,0 +1,24 @@
+---
+# yamllint configuration
+# https://yamllint.readthedocs.io/en/stable/configuration.html
+
+extends: default
+
+rules:
+  line-length:
+    max: 200
+
+  # Truthy values - be flexible
+  truthy:
+    allowed-values: ["true", "false", "yes", "no", "on", "off"]
+
+  # Indentation - 2 spaces, consistent
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Require YAML document end marker (...)
+  document-end:
+    present: true
+...

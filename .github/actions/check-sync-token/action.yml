@@ -1,0 +1,25 @@
+---
+name: "Check Sync Token"
+description: "Verify REPO_SYNC_PAT is configured and export HAS_TOKEN to env."
+inputs:
+  token-configured:
+    description: "Result of secrets.REPO_SYNC_PAT != '' expression"
+    required: true
+outputs:
+  has-token:
+    description: "'true' if token is configured, 'false' otherwise"
+    value: ${{ steps.check.outputs.has-token }}
+runs:
+  using: "composite"
+  steps:
+    - name: Check token availability
+      id: check
+      shell: bash
+      run: |
+        has_token="${{ inputs.token-configured }}"
+        echo "HAS_TOKEN=${has_token}" >> "$GITHUB_ENV"
+        echo "has-token=${has_token}" >> "$GITHUB_OUTPUT"
+        if [ "${has_token}" != "true" ]; then
+          echo "::notice::REPO_SYNC_PAT secret not configured — skipping sync."
+        fi
+...

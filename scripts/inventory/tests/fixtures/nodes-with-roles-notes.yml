@@ -1,0 +1,20 @@
+---
+version: 1
+nodes:
+  - hostname: prd-srv-control-01
+    roles: [control]
+    platform: manual-platform
+    cpu:
+      model: Old CPU
+      cores: 4
+      threads: 8
+    memory_gb: 16
+    gpus: ["manual gpu"]
+    storage: ["manual storage"]
+    software:
+      apt_manual: ["manual-apt"]
+      snaps: ["manual-snap"]
+      other: ["manual-other"]
+    status: active
+    notes: keep this note
+...

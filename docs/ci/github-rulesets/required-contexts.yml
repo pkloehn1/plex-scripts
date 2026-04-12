@@ -1,0 +1,14 @@
+---
+# Declarative required status check contexts for the main branch ruleset.
+# Each repo owns its own file — the hub declares only hub-applicable checks.
+# Spoke repos add their own contexts (e.g., "Lint Traefik Swarm Configuration").
+#
+# Schema: list of {context: str, integration_id: int}
+# - context: the status check name as shown in GitHub branch protection
+# - integration_id: the GitHub App integration ID that reports the check
+#
+# Managed by: scripts/ci/sync_github_ruleset_export.py --validate-contexts / --apply-contexts
+
+- context: Lint Code Base
+  integration_id: 15368
+...

@@ -1,0 +1,172 @@
+---
+# Pre-commit hook parity workflow
+# Runs the local hook suite in CI, grouped by tier for per-group reporting.
+
+name: Pre-commit Hooks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  merge_group:
+    branches:
+      - main
+    types:
+      - checks_requested
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  pre-commit:
+    name: Check ${{ matrix.display }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tier: guards
+            display: GUARDS
+            hooks: >-
+              check-commit-grouping check-repo-location
+              prevent-unintended-deletions-pre check-repo-layout
+              check-doc-invariants check-workflow-install-patterns
+              check-git-signing
+          - tier: fixers
+            display: FIXERS
+            hooks: >-
+              end-of-file-fixer mixed-line-ending trailing-whitespace
+              fix-byte-order-marker check-yaml check-added-large-files
+              check-merge-conflict check-executables-have-shebangs
+              check-shebang-scripts-are-executable
+          - tier: structural
+            display: STRUCTURAL
+            hooks: >-
+              check-json-key-order validate-github-actions-architecture
+              validate-heading-numbers check-mermaid-diagrams
+              validate-service-sheets check-filename-conventions
+              dclint check-bound-ports check-compose-network-mode-conflicts
+              lint-compose lint-traefik-swarm lint-bash-conditional-tests
+          - tier: python
+            display: PYTHON
+            hooks: >-
+              check-cognitive-complexity check-short-identifier-names
+              check-init-docstrings mypy
+          - tier: linters
+            display: LINTERS
+            hooks: >-
+              editorconfig-checker ruff ruff-format yamllint shfmt
+          - tier: post
+            display: POST
+            hooks: prevent-unintended-deletions-post
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -e '.[dev]'
+
+      - name: Determine diff range
+        id: diff
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [ "${EVENT_NAME}" = "push" ]; then
+            candidate="${EVENT_BEFORE}"
+          else
+            candidate="origin/main"
+          fi
+          if [ "$candidate" = "0000000000000000000000000000000000000000" ]; then
+            candidate="origin/main"
+          fi
+          if ! git cat-file -e "${candidate}^{commit}" 2>/dev/null; then
+            candidate="origin/main"
+          fi
+          echo "from_ref=$candidate" >> "$GITHUB_OUTPUT"
+          echo "to_ref=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Run hooks (${{ matrix.display }})
+        env:
+          SKIP_GIT_SIGNING_CHECK: "1"
+          FROM_REF: ${{ steps.diff.outputs.from_ref }}
+          TO_REF: ${{ steps.diff.outputs.to_ref }}
+          HOOKS: ${{ matrix.hooks }}
+        run: |
+          exit_code=0
+          for hook in ${HOOKS}; do
+            .venv/bin/python -m pre_commit run "${hook}" \
+              --from-ref "${FROM_REF}" --to-ref "${TO_REF}" \
+              --show-diff-on-failure || exit_code=1
+          done
+          exit "${exit_code}"
+
+      - name: Report status context
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        uses: ./.github/actions/report-status-context
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          job-status: ${{ job.status }}
+          status-context: "--> Checked: ${{ matrix.display }}"
+          target-url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  all-hooks-passed:
+    name: All Hooks Passed
+    if: ${{ always() }}
+    needs: [pre-commit]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+    steps:
+      - name: Check hook results
+        env:
+          MATRIX_RESULT: ${{ needs.pre-commit.result }}
+        run: |
+          if [[ "${MATRIX_RESULT}" != "success" ]]; then
+            printf 'Hook matrix failed: %s\n' "${MATRIX_RESULT}"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Report status context
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        uses: ./.github/actions/report-status-context
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          job-status: ${{ job.status }}
+          status-context: "All Hooks Passed"
+          target-url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+...

@@ -1,0 +1,30 @@
+---
+name: "Parse Sync Targets"
+description: "Read target repositories from sync-directives.yml config."
+inputs:
+  config-path:
+    description: "Path to sync-directives.yml"
+    default: ".github/sync-directives.yml"
+  pythonpath:
+    description: "PYTHONPATH for script imports (defaults to workspace root)"
+    default: "."
+outputs:
+  targets:
+    description: "JSON array of target repository objects"
+    value: ${{ steps.parse.outputs.targets }}
+runs:
+  using: "composite"
+  steps:
+    - name: Install pyyaml
+      shell: bash
+      run: python3 -m pip install --quiet pyyaml
+
+    - name: Parse targets
+      id: parse
+      shell: bash
+      env:
+        PYTHONPATH: ${{ inputs.pythonpath }}
+      run: |
+        targets=$(python3 -m scripts.ci.parse_sync_targets "${{ inputs.config-path }}")
+        echo "targets=$targets" >> "$GITHUB_OUTPUT"
+...

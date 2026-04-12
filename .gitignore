@@ -1,0 +1,51 @@
+# Python Style Guide - .gitignore Patterns
+# See docs/python-style-guide.md
+
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE and editor files
+.idea/
+.vscode/*
+!.vscode/settings.json
+*.swp
+*.swo
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Type checking
+.mypy_cache/
+.pytype/
+
+# Linting
+.ruff_cache/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Environment variable files (may contain secrets or 1Password references)
+.env
+.env.*
+
+# Generated at runtime by labels-sync workflow
+.github/labels-merged.yml
+
+# Temporary / scratch
+tmp/

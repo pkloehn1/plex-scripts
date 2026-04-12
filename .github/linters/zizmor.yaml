@@ -1,0 +1,28 @@
+---
+# =============================================================================
+# zizmor Configuration
+# =============================================================================
+# Configuration for the zizmor GitHub Actions security linter.
+# See: https://docs.zizmor.sh/configuration/
+
+rules:
+  # ---------------------------------------------------------------------------
+  # unpinned-uses - Allow semantic version tags instead of SHA pinning
+  # ---------------------------------------------------------------------------
+  # Override the default policy to allow ref-pinning (semantic versions like
+  # @v8) instead of requiring full commit SHA pinning.
+  #
+  # Rationale: Semantic versioning provides maintainability benefits for a
+  # single-operator homelab while still providing major version stability.
+  # The trade-off between security (SHA pinning) and maintainability
+  # (semantic versions) favors semantic versions in this context.
+  #
+  # Policy options:
+  #   - hash-pin: requires SHA reference (strictest)
+  #   - ref-pin: requires tag/branch or SHA reference (allows @v8)
+  #   - any: no pinning required (least strict)
+  unpinned-uses:
+    config:
+      policies:
+        "*": ref-pin
+...

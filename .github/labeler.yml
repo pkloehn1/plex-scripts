@@ -1,0 +1,185 @@
+---
+area/ai-directives:
+  - changed-files:
+      - any-glob-to-any-file: .claude/**
+      - any-glob-to-any-file: CLAUDE.md
+      - any-glob-to-any-file: .github/claude-code-instructions.md
+      - any-glob-to-any-file: .github/copilot-instructions.md
+      - any-glob-to-any-file: .github/instructions/**
+
+area/docs:
+  - changed-files:
+      - any-glob-to-any-file: docs/**
+
+area/ci:
+  - changed-files:
+      - any-glob-to-any-file: .github/workflows/**
+      - any-glob-to-any-file: .github/instructions/**
+      - any-glob-to-any-file: .github/linters/**
+      - any-glob-to-any-file: scripts/ci/**
+      - any-glob-to-any-file: scripts/linting/**
+
+area/security:
+  - changed-files:
+      - any-glob-to-any-file: app-config/crowdsec/**
+      - any-glob-to-any-file: docs/**/security/**
+
+area/network:
+  - changed-files:
+      - any-glob-to-any-file: docs/inventory/**
+      - any-glob-to-any-file: docs/architecture/**
+
+area/bash:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.sh"
+
+area/powershell:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.ps1"
+
+area/python:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.py"
+      - any-glob-to-any-file: pyproject.toml
+
+area/automation:
+  - changed-files:
+      - any-glob-to-any-file: scripts/devops/**
+      - any-glob-to-any-file: docs/automation/**
+
+platform/swarm:
+  - changed-files:
+      - any-glob-to-any-file: stacks/**
+
+system/control-node:
+  - changed-files:
+      - any-glob-to-any-file: env/prd-srv-control-01/**
+
+system/edge-node:
+  - changed-files:
+      - any-glob-to-any-file: stacks/edge/**
+
+system/dmz:
+  - changed-files:
+      - any-glob-to-any-file: stacks/edge/**
+      - any-glob-to-any-file: docs/**/dmz/**
+
+system/dns:
+  - changed-files:
+      - any-glob-to-any-file: docs/**/dns/**
+
+stack/control:
+  - changed-files:
+      - any-glob-to-any-file: stacks/control/**
+
+stack/edge:
+  - changed-files:
+      - any-glob-to-any-file: stacks/edge/**
+
+stack/media-utils:
+  - changed-files:
+      - any-glob-to-any-file: stacks/media-utils/**
+
+stack/servarr:
+  - changed-files:
+      - any-glob-to-any-file: stacks/servarr/**
+
+stack/apim:
+  - changed-files:
+      - any-glob-to-any-file: stacks/apim/**
+
+service/bazarr:
+  - changed-files:
+      - any-glob-to-any-file: app-config/bazarr/**
+      - any-glob-to-any-file: stacks/**/bazarr/**
+
+service/cloudflare-ddns:
+  - changed-files:
+      - any-glob-to-any-file: app-config/cloudflare-ddns/**
+      - any-glob-to-any-file: stacks/**/cloudflare-ddns/**
+
+service/crowdsec:
+  - changed-files:
+      - any-glob-to-any-file: app-config/crowdsec/**
+      - any-glob-to-any-file: stacks/**/crowdsec/**
+
+service/docker-gc:
+  - changed-files:
+      - any-glob-to-any-file: app-config/docker-gc/**
+      - any-glob-to-any-file: stacks/**/docker-gc/**
+
+service/huntarr:
+  - changed-files:
+      - any-glob-to-any-file: app-config/huntarr/**
+      - any-glob-to-any-file: stacks/**/huntarr/**
+
+service/kometa:
+  - changed-files:
+      - any-glob-to-any-file: app-config/kometa/**
+      - any-glob-to-any-file: stacks/**/kometa/**
+
+service/lidarr:
+  - changed-files:
+      - any-glob-to-any-file: app-config/lidarr/**
+      - any-glob-to-any-file: stacks/**/lidarr/**
+
+service/portainer:
+  - changed-files:
+      - any-glob-to-any-file: app-config/portainer/**
+      - any-glob-to-any-file: stacks/**/portainer/**
+
+service/prowlarr:
+  - changed-files:
+      - any-glob-to-any-file: app-config/prowlarr/**
+      - any-glob-to-any-file: stacks/**/prowlarr/**
+
+service/radarr:
+  - changed-files:
+      - any-glob-to-any-file: app-config/radarr/**
+      - any-glob-to-any-file: stacks/**/radarr/**
+
+service/readarr:
+  - changed-files:
+      - any-glob-to-any-file: app-config/readarr/**
+      - any-glob-to-any-file: stacks/**/readarr/**
+
+service/recyclarr:
+  - changed-files:
+      - any-glob-to-any-file: app-config/recyclarr/**
+      - any-glob-to-any-file: stacks/**/recyclarr/**
+
+service/sabnzbd:
+  - changed-files:
+      - any-glob-to-any-file: app-config/sabnzbd/**
+      - any-glob-to-any-file: stacks/**/sabnzbd/**
+
+service/servarr-postgres:
+  - changed-files:
+      - any-glob-to-any-file: app-config/servarr-postgres/**
+      - any-glob-to-any-file: stacks/**/servarr-postgres/**
+
+service/socket-proxy:
+  - changed-files:
+      - any-glob-to-any-file: app-config/socket-proxy/**
+      - any-glob-to-any-file: stacks/**/socket-proxy/**
+
+service/sonarr:
+  - changed-files:
+      - any-glob-to-any-file: app-config/sonarr/**
+      - any-glob-to-any-file: stacks/**/sonarr/**
+
+service/traefik:
+  - changed-files:
+      - any-glob-to-any-file: app-config/traefik/**
+      - any-glob-to-any-file: stacks/**/traefik/**
+
+service/unifi-network-mcp:
+  - changed-files:
+      - any-glob-to-any-file: app-config/unifi-network-mcp/**
+      - any-glob-to-any-file: stacks/**/unifi-network-mcp/**
+
+service/uptime-kuma:
+  - changed-files:
+      - any-glob-to-any-file: app-config/uptime-kuma/**
+      - any-glob-to-any-file: stacks/**/uptime-kuma/**
+...

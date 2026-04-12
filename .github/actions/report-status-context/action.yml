@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+---
+name: Report Status Context
+description: Report a required status check context on the PR merge commit SHA.
+
+inputs:
+  github-token:
+    description: GitHub token used to call the GitHub API.
+    required: true
+  pr-number:
+    description: Pull request number.
+    required: true
+  job-status:
+    description: GitHub Actions job status (e.g. success, failure).
+    required: true
+  status-context:
+    description: Commit status context name expected by rulesets.
+    required: true
+  target-url:
+    description: URL to the workflow run.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Report required status context
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        JOB_STATUS: ${{ inputs.job-status }}
+        STATUS_CONTEXT: ${{ inputs.status-context }}
+        TARGET_URL: ${{ inputs.target-url }}
+      run: python3 -m scripts.ci.report_status_context
+...

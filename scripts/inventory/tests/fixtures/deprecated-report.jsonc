@@ -1,0 +1,8 @@
+{
+  // old schema
+  "schema_version": 0,
+  "deprecated": true,
+  "nodes": {
+    "node-a": {"old_section": {"value": 1}}
+  }
+}

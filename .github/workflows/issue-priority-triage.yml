@@ -1,0 +1,41 @@
+---
+# Deterministic issue priority triage (P0-P3).
+# Re-evaluates on every open, reopen, or edit (title/body/label change).
+# Framework: docs/repository-standards/priority-decision-framework.md
+name: Issue Priority Triage
+
+on:
+  issues:
+    types: [opened, reopened, edited, labeled, unlabeled]
+
+# One evaluation per issue at a time; cancel stale runs on rapid edits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read   # checkout
+      issues: write    # add/remove labels, post comments
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Triage issue priority
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 -m scripts.ci.triage_issue_priority
+...

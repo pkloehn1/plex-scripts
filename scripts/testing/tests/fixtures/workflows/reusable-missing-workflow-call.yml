@@ -1,0 +1,14 @@
+---
+name: Reuse
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+
+jobs:
+  noop:
+    permissions:
+      contents: read
+    uses: org/repo/.github/workflows/other.yml@v1
+...

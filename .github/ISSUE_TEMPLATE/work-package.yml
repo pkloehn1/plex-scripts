@@ -1,0 +1,156 @@
+---
+name: Work Package / Incident RCA
+description: Plan work or document incidents with deliverables and success criteria
+title: "type(scope): short summary of work"
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      description: Select the issue type (controls which labels are applied)
+      options:
+        - work-package
+        - incident-rca
+    validations:
+      required: true
+
+  - type: input
+    id: objective
+    attributes:
+      label: Objective
+      description: One-sentence outcome/goal (or problem statement for incidents)
+      placeholder: e.g., Fix labeler trigger to pull_request_target
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk_level
+    attributes:
+      label: Risk / Severity
+      description: Expected risk of change (work-package) or impact level (incident)
+      options:
+        - low
+        - medium
+        - high
+        - critical
+    validations:
+      required: true
+
+  - type: input
+    id: deployed_version
+    attributes:
+      label: Deployed version
+      description: >-
+        Incident-rca only — CalVer tag of the deployed release when the
+        incident occurred (vYYYY.0M.MICRO, e.g. v2026.03.1)
+      placeholder: "v2026.03.0"
+
+  - type: textarea
+    id: affected_paths
+    attributes:
+      label: Affected services/paths
+      description: List impacted services, folders, and key files
+      placeholder: "- scripts/github/pr_upsert.py\n- .github/ISSUE_TEMPLATE/work-package.yml"
+    validations:
+      required: true
+
+  - type: textarea
+    id: rollback_plan
+    attributes:
+      label: Rollback plan
+      description: How to revert safely if this change causes regressions
+      placeholder: "- Revert commit(s)\n- Roll back config change\n- Validate service health"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Incident-RCA sections** — Fill in the fields below only when
+        Type is *incident-rca*. For work-packages, leave them blank.
+
+  - type: textarea
+    id: root_cause_analysis
+    attributes:
+      label: Root cause analysis
+      description: >-
+        Incident-rca only — Use FTA + 5 Whys. Include what happened,
+        why it happened, and contributing factors.
+      placeholder: |
+        **5 Whys:**
+        1. Why did X fail? → ...
+        2. Why did ...? → ...
+        3. ...
+
+        **Root Cause:** ...
+
+  - type: textarea
+    id: preventive_measures
+    attributes:
+      label: Preventive measures
+      description: >-
+        Incident-rca only — Actions to prevent recurrence (checkboxes)
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Deliverables
+      description: List concrete artifacts/changes to produce
+      placeholder: "- Update workflow ...\n- Add tests ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: Observable pass/fail outcomes (checkboxes)
+      value: |
+        - [ ] Feature or workflow behaves as documented for the target use case
+        - [ ] Configuration or code change applies without errors in affected environments
+        - [ ] No regressions observed in listed affected services/paths
+        - [ ] Documentation and examples updated where behavior or usage has changed
+    validations:
+      required: true
+
+  - type: textarea
+    id: tdd_requirements
+    attributes:
+      label: TDD Requirements
+      description: Test-Driven Development acceptance criteria
+      value: |
+        - [ ] Write failing test first (Red)
+        - [ ] Implement minimal code to pass test (Green)
+        - [ ] Refactor for quality/maintainability (Refactor)
+    validations:
+      required: true
+
+  - type: input
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Issues/PRs that must complete first
+      placeholder: "#123, #456"
+
+  - type: input
+    id: related
+    attributes:
+      label: Related Commits/PRs
+      description: Link commits/PRs implementing fixes (add after implementation)
+      placeholder: "Commits: b6649c0, 1734e64 | PRs: #66"
+
+  - type: dropdown
+    id: estimate
+    attributes:
+      label: Estimate
+      options:
+        - 1h
+        - 2h
+        - 3h
+    validations:
+      required: true
+...

@@ -1,0 +1,419 @@
+---
+# Pre-commit hooks configuration
+# https://pre-commit.com/
+# These hooks auto-fix issues where possible
+
+x-python-wrapper: &python_wrapper
+  entry: scripts/precommit/run_python
+  language: system
+
+repos:
+  # Commit message validation - fail fast on non-conventional messages (commit-msg stage)
+  - repo: local
+    hooks:
+      - id: check-commit-message
+        name: Check Commit Message Format
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/check_commit_message.py
+        always_run: true
+        stages: [commit-msg]
+
+  # Early location/signing/deletion checks - run FIRST to block invalid contexts before any mutations
+  - repo: local
+    hooks:
+      - id: check-commit-grouping
+        name: Check Commit Grouping
+        # Use repo wrapper for platform-appropriate Python and then exec into the repo venv.
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/check_commit_grouping.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: check-repo-location
+        name: Check Repository Location
+        # Use repo wrapper for platform-appropriate Python (python3 on Linux/macOS,
+        # py -3 on Windows) and then exec into the repo venv.
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/check_repo_location.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: prevent-unintended-deletions-pre
+        name: Prevent Unintended Deletions (pre)
+        # Use repo wrapper for platform-appropriate Python and then exec into the repo venv.
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/prevent_unintended_deletions.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # Local hooks (python entry for Windows portability; run_in_repo_venv
+      # activates the repo venv)
+      - id: check-repo-layout
+        name: Check Repository Layout Invariants
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/check_repo_layout.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: check-doc-invariants
+        name: Check Documentation Invariants
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/check_doc_invariants.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: check-sync-directives-completeness
+        name: Check Sync Directives Completeness
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/check_sync_directives_completeness.py
+        files: ^(scripts/|\.github/sync-directives\.yml)
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: check-workflow-install-patterns
+        name: Check Workflow Install Patterns
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/check_workflow_install_patterns.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: check-git-signing
+        name: Check Git Commit Signing
+        # Use repo wrapper for platform-appropriate Python and then exec into the repo venv.
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/check_git_signing.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+  # General file checks - line endings, encoding, whitespace
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Auto-fix: Ensure files end with newline
+      - id: end-of-file-fixer
+      # Auto-fix: Convert CRLF to LF
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      # Auto-fix: Remove trailing whitespace
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
+      # Auto-fix: Remove UTF-8 byte order marker (BOM)
+      - id: fix-byte-order-marker
+      # Check: YAML syntax validation
+      - id: check-yaml
+        args: ["--allow-multiple-documents", "--unsafe"]
+      # Check: Prevent large files from being committed
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      # Check: Merge conflict markers
+      - id: check-merge-conflict
+      # Check: Executables have shebangs
+      - id: check-executables-have-shebangs
+      # Check: Files with shebangs are executable
+      - id: check-shebang-scripts-are-executable
+
+  # --- Add-on: compose ---------------------------------------------------------
+  # Docker Compose linting - validates best practices and style
+  # Reference: docs/repository-standards/style-guides/docker-yaml-style-guide.md
+  # Note: --fix flag removed because it strips leading comment headers
+  # Hub-spoke sync: compose/swarm add-on hooks are synced to spokes via
+  # .github/sync-directives.yml. They show "(no files to check) Skipped" in
+  # the hub (no compose/ or stacks/ dirs) but are active in spoke repos.
+  # See: docs/repository-standards/pre-commit-add-ons.md
+  - repo: https://github.com/docker-compose-linter/pre-commit-dclint
+    rev: v3.0.0
+    hooks:
+      # Check: Docker Compose best practices and style enforcement
+      # Validation only - manual fixes required to preserve comment headers
+      - id: dclint
+        name: Docker Compose Linter (dclint)
+        # yamllint disable-line rule:line-length
+        files: ^(docker-compose\.ya?ml|compose/.*/docker-compose\.ya?ml|stacks/.*/docker-compose\.ya?ml)$
+
+  # Local hooks - custom scripts
+  - repo: local
+    hooks:
+      # Fast structural checks first
+      - id: check-json-key-order
+        name: Check JSON Key Ordering
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/check_json_key_order.py
+        types: [json]
+        exclude: ^(\.venv/|scripts/.*/tests/fixtures/)
+        pass_filenames: true
+
+      - id: validate-github-actions-architecture
+        name: Validate GitHub Actions Architecture
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/validate_github_actions_architecture.py
+        files: ^\.github/workflows/.*\.ya?ml$
+        pass_filenames: false
+
+      - id: validate-heading-numbers
+        name: Validate Markdown Heading Numbers
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/validate_heading_numbers.py
+        types: [markdown]
+        files: ^docs/automation/runbooks/.*\.md$
+        pass_filenames: true
+
+      - id: check-mermaid-diagrams
+        name: Check Mermaid Diagrams (GitHub render)
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/check_mermaid_diagrams.py
+        types: [markdown]
+        files: ^(README\.md|docs/|scripts/).*(\.md)$
+        pass_filenames: true
+
+      - id: validate-service-sheets
+        name: Validate Service Inventory Sheets
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/validate_service_sheets.py
+        types: [markdown]
+        files: ^docs/inventory/services/(?!_template-).*\.md$
+        pass_filenames: true
+
+      - id: check-filename-conventions
+        name: Check Filename Conventions
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/check_filename_conventions.py
+        files: ^(README\.md|scripts/|docs/|stacks/|app-config/)
+        pass_filenames: false
+
+      # --- Add-on: compose (continued) ---
+      # Hub-spoke sync: compose add-on hooks are inert in hub, active in spokes.
+      # run_if_exists guard: graceful skip if script excluded via sync-directives.
+      - id: check-bound-ports
+        name: Check Bound Port Interfaces
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/precommit/run_if_exists.py
+          - scripts/linting/check_bound_ports.py
+          - scripts/linting/check_bound_ports.py
+        # yamllint disable-line rule:line-length
+        files: ^(compose/.*/docker-compose\.ya?ml|stacks/.*/docker-compose\.ya?ml)$
+        pass_filenames: true
+
+      - id: check-compose-network-mode-conflicts
+        name: Check Compose Network Mode Conflicts
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/precommit/run_if_exists.py
+          - scripts/linting/check_compose_network_mode_conflicts.py
+          - scripts/linting/check_compose_network_mode_conflicts.py
+        # yamllint disable-line rule:line-length
+        files: ^(compose/.*/docker-compose\.ya?ml|stacks/.*/docker-compose\.ya?ml)$
+        pass_filenames: true
+
+      - id: lint-compose
+        name: Lint Docker Compose Configuration
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/precommit/run_if_exists.py
+          - scripts/linting/lint_compose.py
+          - scripts/linting/lint_compose.py
+        # yamllint disable-line rule:line-length
+        files: ^(docker-compose\.ya?ml|compose/.*/docker-compose\.ya?ml)$
+        pass_filenames: true
+
+      # --- Add-on: swarm (Traefik-specific) ---
+      # Hub-spoke sync: swarm hook is inert in hub, active in swarm spokes.
+      # run_if_exists guard: graceful skip if script excluded via sync-directives.
+      - id: lint-traefik-swarm
+        name: Lint Traefik Swarm Configuration
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/precommit/run_if_exists.py
+          - scripts/linting/lint_swarm.py
+          - scripts/linting/lint_swarm.py
+        files: ^stacks/.*/docker-compose\.ya?ml$
+        pass_filenames: true
+
+      - id: lint-bash-conditional-tests
+        name: Lint Bash Conditional Tests
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/check_bash_test_syntax.py
+        files: ^.*\.sh$
+        pass_filenames: true
+
+      - id: check-cognitive-complexity
+        name: Check Cognitive Complexity (scripts)
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/check_cognitive_complexity.py
+          - --max
+          - "15"
+        files: ^scripts/.*\.py$
+        pass_filenames: true
+
+      - id: check-short-identifier-names
+        name: Check Short Identifier Names (Python)
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/check_short_identifier_names.py
+        files: ^.*\.py$
+        pass_filenames: true
+
+      - id: check-init-docstrings
+        name: Check __init__.py Module Docstrings
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/check_init_docstrings.py
+        files: ^scripts/.*/__init__\.py$
+        pass_filenames: false
+
+      # Python type checking - local hook runs mypy from repo venv for full
+      # dependency access (avoids mirrors-mypy isolation/coverage pitfalls)
+      - id: mypy
+        name: Mypy Type Checking (scripts)
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - -m
+          - mypy
+          - scripts/
+        files: ^scripts/.*\.py$
+        pass_filenames: false
+
+  # Standalone linter hooks — run BEFORE the Super-Linter Docker hook.
+  # These receive staged files directly from pre-commit, bypassing
+  # Super-Linter's git diff-tree limitation that misses staged-only files.
+  # Same hooks run in CI via pre-commit.yml workflow.
+
+  - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
+    rev: 3.2.1
+    hooks:
+      - id: editorconfig-checker
+        name: EditorConfig Compliance
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.6
+    hooks:
+      - id: ruff
+        name: Ruff Lint (Python)
+        args: [--config, .github/linters/.ruff.toml]
+      - id: ruff-format
+        name: Ruff Format Check (Python)
+        args: [--check, --config, .github/linters/.ruff.toml]
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        name: YAML Strict Lint
+        args: [-c, .github/linters/.yaml-lint.yml]
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.12.0-2
+    hooks:
+      - id: shfmt
+        name: Shell Format (shfmt)
+
+  - repo: local
+    hooks:
+      # Heavier checks last: Docker + targeted pytest
+      - id: super-linter
+        name: Super-Linter (Docker)
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/linting/run_super_linter.py
+        pass_filenames: false
+        require_serial: true
+
+      # Optional: run pytest locally on-demand.
+      - id: pytest
+        name: Pytest (manual)
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - -m
+          - pytest
+          - -q
+          - scripts/testing/hooks
+        pass_filenames: false
+        stages: [manual]
+
+      # Dynamic pytest: auto-discovers affected test directories from changed
+      # files. Replaces static per-package pytest-*-scripts hooks. The
+      # run_if_exists guard ensures graceful skip if pytest_affected.py is
+      # absent (e.g. during sync to older spokes).
+      # yamllint disable-line rule:line-length
+      - id: pytest-affected
+        name: Pytest (affected packages)
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/precommit/run_if_exists.py
+          # First path = guard check (does the script exist?).
+          # Second path = command to execute if the guard passes.
+          - scripts/precommit/pytest_affected.py
+          - scripts/precommit/pytest_affected.py
+        # yamllint disable-line rule:line-length
+        files: ^(scripts/.*\.py|compose/.*|stacks/.*|\.github/image-service-map\.json)$
+        pass_filenames: true
+
+
+  # Deletion prevention (post-check) - runs LAST to catch deletions after all mutations
+  - repo: local
+    hooks:
+      - id: prevent-unintended-deletions-post
+        name: Prevent Unintended Deletions (post)
+        <<: *python_wrapper
+        args:
+          - scripts/precommit/run_in_repo_venv.py
+          - scripts/testing/hooks/prevent_unintended_deletions.py
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+# Configuration
+default_stages: [pre-commit]
+fail_fast: false
+...

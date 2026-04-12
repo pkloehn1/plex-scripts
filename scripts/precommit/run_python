@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+set -e
+
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "$@"
+fi
+
+# Windows py launcher (py -3) — not present on Linux/macOS
+if command -v py >/dev/null 2>&1; then
+  exec py -3 "$@"
+fi
+
+if command -v python >/dev/null 2>&1; then
+  exec python "$@"
+fi
+
+echo "Executable python not found" >&2
+exit 1

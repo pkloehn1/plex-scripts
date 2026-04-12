@@ -1,0 +1,10 @@
+---
+skip-path:
+  - "/tmp/"
+  - "/workspace/tmp/"
+  - "/github/workspace/tmp/"
+  - "app-config/recyclarr/secrets.yml"
+  - "/workspace/app-config/recyclarr/secrets.yml"
+skip-check:
+  - CKV_GHA_7
+...
