@@ -1,5 +1,7 @@
 """Test select tmdb poster."""
 
+import sys
+import types
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -400,6 +402,53 @@ class TestProcessLibraries(_CoreTestBase):
         mock_select_library.assert_called_once()
         mock_summary.assert_called_once()
         library.all.assert_called_once_with(includeGuids=False)
+
+
+class TestEntryPointResolvers(_CoreTestBase):
+    """Import resolvers supporting both module and direct-file launches."""
+
+    def test_resolve_should_use_tui_package(self):
+        """The package import resolves to the real should_use_tui."""
+        resolved = core._resolve_should_use_tui()
+        self.assertTrue(resolved([]))
+        self.assertFalse(resolved(["script", "--poster"]))
+
+    def test_resolve_should_use_tui_falls_back_to_flat(self):
+        """A failed package import falls back to the flat sibling import."""
+        flat_module = types.ModuleType("select_tmdb_poster_config")
+        flat_module.should_use_tui = lambda argv: argv == ["sentinel"]
+        overrides = {
+            "plex_scripts.tmdb.select_tmdb_poster_config": None,
+            "select_tmdb_poster_config": flat_module,
+        }
+        with patch.dict(sys.modules, overrides):
+            resolved = core._resolve_should_use_tui()
+        self.assertTrue(resolved(["sentinel"]))
+
+    def test_resolve_run_tui_package(self):
+        """The package import resolves run_tui when available."""
+        self.assertIsNotNone(core._resolve_run_tui())
+
+    def test_resolve_run_tui_falls_back_to_flat(self):
+        """A failed package import falls back to the flat sibling import."""
+        flat_module = types.ModuleType("select_tmdb_poster_tui")
+        sentinel = object()
+        flat_module.run_tui = sentinel
+        overrides = {
+            "plex_scripts.tmdb.select_tmdb_poster_tui": None,
+            "select_tmdb_poster_tui": flat_module,
+        }
+        with patch.dict(sys.modules, overrides):
+            self.assertIs(core._resolve_run_tui(), sentinel)
+
+    def test_resolve_run_tui_unavailable_returns_none(self):
+        """When neither import resolves, the resolver returns None."""
+        overrides = {
+            "plex_scripts.tmdb.select_tmdb_poster_tui": None,
+            "select_tmdb_poster_tui": None,
+        }
+        with patch.dict(sys.modules, overrides):
+            self.assertIsNone(core._resolve_run_tui())
 
 
 if __name__ == "__main__":
