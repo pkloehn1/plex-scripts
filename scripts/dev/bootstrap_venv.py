@@ -150,13 +150,36 @@ def write_bootstrap_state(state_path: Path, desired_state: dict[str, str | None]
     state_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def _probe_project_import(venv_python: Path) -> bool:
+    """Return True when the editable project imports in the venv.
+
+    The guard pre-commit hooks import the top-level ``scripts`` package, which
+    resolves only through the project's editable install. If that install is
+    missing or damaged, the import fails and the hooks break with a confusing
+    ``ModuleNotFoundError: No module named 'scripts'``. Probing lets bootstrap
+    detect and self-heal that state instead of relying on the pyproject hash.
+    """
+    try:
+        proc = subprocess.run(
+            [str(venv_python), "-c", "import scripts, plex_scripts"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return False
+    return proc.returncode == 0
+
+
 def collect_state(
     *,
     repo_root: Path,
     platform: str,
     which: Callable[[str], str | None] = shutil.which,
+    probe_import: Callable[[Path], bool] = _probe_project_import,
 ) -> State:
     venv_python = _resolve_venv_python(repo_root, platform)
+    project_importable = probe_import(venv_python) if venv_python is not None else None
     pyproject_present = (repo_root / PYPROJECT_FILE).exists()
     desired_state = build_desired_state(repo_root) if pyproject_present else None
     state_path = _state_file_path(repo_root)
@@ -177,6 +200,7 @@ def collect_state(
         "venv_path": str(repo_root / VENV_DIR),
         "venv_python": str(venv_python) if venv_python else None,
         "venv_exists": (repo_root / VENV_DIR).exists(),
+        "project_importable": project_importable,
         "pyproject_present": pyproject_present,
         "pre_commit_hook_exists": (repo_root / ".git" / "hooks" / "pre-commit").exists(),
         "state_matches": state_matches,
@@ -195,7 +219,8 @@ def build_plan(state: State) -> list[str]:
     venv_missing = not state.get("venv_python")
     if venv_missing:
         actions.append("create_venv")
-    if venv_missing or not state.get("pyproject_matches"):
+    project_broken = state.get("project_importable") is False
+    if venv_missing or not state.get("pyproject_matches") or project_broken:
         actions.append("upgrade_pip")
         actions.append("install_dev_extras")
     if venv_missing or (not state.get("pre_commit_hook_exists")) or (not state.get("pre_commit_matches")):
@@ -214,9 +239,12 @@ def describe_plan(state: State) -> list[str]:
         lines.append("create_venv: no-op (venv already exists)")
 
     venv_missing = not state.get("venv_python")
-    if venv_missing or not state.get("pyproject_matches"):
+    project_broken = state.get("project_importable") is False
+    if venv_missing or not state.get("pyproject_matches") or project_broken:
         lines.append("upgrade_pip: would run .venv python -m pip install -U pip")
         lines.append('install_dev_extras: would run .venv python -m pip install -e ".[dev]"')
+        if project_broken:
+            lines.append("  reason: editable project not importable (import scripts/plex_scripts failed)")
     else:
         lines.append("upgrade_pip: no-op (bootstrap state unchanged)")
         lines.append("install_dev_extras: no-op (bootstrap state unchanged)")
@@ -398,12 +426,13 @@ def run_bootstrap(
     dry_run: bool = False,
     verify: bool = False,
     which: Callable[[str], str | None] = shutil.which,
+    probe_import: Callable[[Path], bool] = _probe_project_import,
 ) -> int:
     if not (repo_root / PYPROJECT_FILE).exists():
         print("[FAIL] pyproject.toml not found; run from repo root.", file=sys.stderr)
         return EXIT_FAILED
 
-    state = collect_state(repo_root=repo_root, platform=platform, which=which)
+    state = collect_state(repo_root=repo_root, platform=platform, which=which, probe_import=probe_import)
     plan = build_plan(state)
     signing_status = check_git_signing()
     if verify:
@@ -416,6 +445,9 @@ def run_bootstrap(
         print("[OK] Repo bootstrap already up to date.")
         _report_git_signing(signing_status)
         return EXIT_OK
+
+    if state.get("project_importable") is False:
+        print("[INFO] Editable project not importable in venv; reinstalling to repair.")
 
     venv_python, venv_rc = _ensure_venv(
         repo_root=repo_root,
