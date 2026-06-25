@@ -67,6 +67,11 @@ jobs:
             test_path: scripts/linting/tests
             cov_path: scripts/linting
             display: LINTING
+          - package: plex-scripts
+            test_path: tests
+            cov_path: src/plex_scripts
+            cov_config: .github/coverage/plex_scripts.toml
+            display: PLEX_SCRIPTS
           - package: precommit
             test_path: scripts/precommit/tests
             cov_path: scripts/precommit
