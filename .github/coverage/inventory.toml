@@ -1,0 +1,18 @@
+# Coverage config for the scripts/inventory package CI job.
+# Excludes remote_probe.py: it executes on remote nodes via SSH stdin
+# (stdlib-only, must not import scripts.*) and is exercised through a
+# subprocess, so in-process coverage cannot measure it.
+
+[run]
+source = ["scripts/inventory"]
+omit = [
+    "**/test_*.py",
+    "**/tests/**",
+    "**/conftest.py",
+    "**/remote_probe.py",
+]
+
+[report]
+exclude_also = [
+    "if __name__ == .__main__.",
+]
