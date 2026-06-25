@@ -32,7 +32,7 @@ jobs:
 
       - name: Checkout
         if: env.HAS_TOKEN == 'true'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -54,13 +54,13 @@ jobs:
 
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
           path: local
 
       - name: Checkout remote
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ matrix.target.repo }}
           token: ${{ secrets.REPO_SYNC_PAT }}
