@@ -455,11 +455,11 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    from select_tmdb_poster_config import should_use_tui
+    from plex_scripts.tmdb.select_tmdb_poster_config import should_use_tui
 
     if should_use_tui(sys.argv):
         try:
-            from select_tmdb_poster_tui import run_tui
+            from plex_scripts.tmdb.select_tmdb_poster_tui import run_tui
         except ImportError:
             print(
                 "Interactive TUI is not available. Install the 'urwid' package to use the menu interface.",
