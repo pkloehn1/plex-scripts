@@ -22,6 +22,7 @@ from scripts.dev.bootstrap_venv import (
     _normalize_package_name,
     _parse_args,
     _print_dry_run,
+    _probe_project_import,
     _report_git_signing,
     _resolve_venv_python,
     _run_bootstrap_actions,
@@ -249,6 +250,22 @@ class TestLoadWriteBootstrapState:
         assert state_path.exists()
 
 
+class TestProbeProjectImport:
+    def test_returns_true_on_success(self) -> None:
+        completed = subprocess.CompletedProcess(["py"], 0, stdout="", stderr="")
+        with patch("scripts.dev.bootstrap_venv.subprocess.run", return_value=completed):
+            assert _probe_project_import(Path("py")) is True
+
+    def test_returns_false_on_import_error(self) -> None:
+        completed = subprocess.CompletedProcess(["py"], 1, stdout="", stderr="boom")
+        with patch("scripts.dev.bootstrap_venv.subprocess.run", return_value=completed):
+            assert _probe_project_import(Path("py")) is False
+
+    def test_returns_false_when_interpreter_unrunnable(self) -> None:
+        with patch("scripts.dev.bootstrap_venv.subprocess.run", side_effect=OSError("not executable")):
+            assert _probe_project_import(Path("py")) is False
+
+
 class TestCollectState:
     def test_returns_expected_keys(self, tmp_path: Path) -> None:
         (tmp_path / "pyproject.toml").write_text("[project]")
@@ -257,6 +274,31 @@ class TestCollectState:
         assert "repo_root" in state
         assert "venv_exists" in state
         assert "state_matches" in state
+
+    def test_project_importable_none_without_venv(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").write_text("[project]")
+        state = collect_state(repo_root=tmp_path, platform="win32", which=lambda _: None)
+        assert state["project_importable"] is None
+
+    def test_project_importable_probes_when_venv_present(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").write_text("[project]")
+        venv_dir = tmp_path / ".venv" / "Scripts"
+        venv_dir.mkdir(parents=True)
+        (venv_dir / "python.exe").touch()
+        probed: list[Path] = []
+
+        def fake_probe(python_path: Path) -> bool:
+            probed.append(python_path)
+            return False
+
+        state = collect_state(
+            repo_root=tmp_path,
+            platform="win32",
+            which=lambda _: None,
+            probe_import=fake_probe,
+        )
+        assert state["project_importable"] is False
+        assert len(probed) == 1
 
 
 class TestBuildPlan:
@@ -325,12 +367,48 @@ class TestBuildPlan:
         plan = build_plan(state)
         assert "install_pre_commit_hooks" in plan
 
+    def test_broken_import_reinstalls_despite_matching_state(self) -> None:
+        state: dict[str, Any] = {
+            "pyproject_present": True,
+            "venv_python": "/path/to/python",
+            "pyproject_matches": True,
+            "project_importable": False,
+            "pre_commit_hook_exists": True,
+            "pre_commit_matches": True,
+        }
+        plan = build_plan(state)
+        assert "install_dev_extras" in plan
+        assert "create_venv" not in plan
+
+    def test_importable_project_skips_reinstall(self) -> None:
+        state: dict[str, Any] = {
+            "pyproject_present": True,
+            "venv_python": "/path/to/python",
+            "pyproject_matches": True,
+            "project_importable": True,
+            "pre_commit_hook_exists": True,
+            "pre_commit_matches": True,
+        }
+        assert build_plan(state) == []
+
 
 class TestDescribePlan:
     def test_missing_pyproject(self) -> None:
         state: dict[str, Any] = {"pyproject_present": False}
         lines = describe_plan(state)
         assert any("fail_missing_pyproject" in line for line in lines)
+
+    def test_broken_import_explains_reinstall(self) -> None:
+        state: dict[str, Any] = {
+            "pyproject_present": True,
+            "venv_python": "/path/to/python",
+            "pyproject_matches": True,
+            "project_importable": False,
+            "pre_commit_hook_exists": True,
+            "pre_commit_matches": True,
+        }
+        lines = describe_plan(state)
+        assert any("not importable" in line for line in lines)
 
     def test_fresh_install(self) -> None:
         state: dict[str, Any] = {
@@ -643,7 +721,7 @@ class TestRunBootstrap:
         hooks_dir.mkdir(parents=True)
         (hooks_dir / "pre-commit").touch()
         with patch("scripts.dev.bootstrap_venv.check_git_signing", return_value=(True, "ok")):
-            result = run_bootstrap(repo_root=tmp_path, platform="win32")
+            result = run_bootstrap(repo_root=tmp_path, platform="win32", probe_import=lambda _: True)
             assert result == EXIT_OK
 
     def test_full_bootstrap_flow(self, tmp_path: Path) -> None:
@@ -678,6 +756,27 @@ class TestRunBootstrap:
             mock_ensure.return_value = (tmp_path / "python", EXIT_OK)
             result = run_bootstrap(repo_root=tmp_path, platform="win32", which=lambda _: None)
             assert result == 1
+
+    def test_repairs_broken_editable_install(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        (tmp_path / "pyproject.toml").write_text("[project]")
+        (tmp_path / ".pre-commit-config.yaml").write_text("repos: []")
+        venv_dir = tmp_path / ".venv" / "Scripts"
+        venv_dir.mkdir(parents=True)
+        (venv_dir / "python.exe").touch()
+        write_bootstrap_state(_state_file_path(tmp_path), build_desired_state(tmp_path))
+        hooks_dir = tmp_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+        (hooks_dir / "pre-commit").touch()
+        with (
+            patch("scripts.dev.bootstrap_venv.check_git_signing", return_value=(True, "ok")),
+            patch("scripts.dev.bootstrap_venv._ensure_venv") as mock_ensure,
+            patch("scripts.dev.bootstrap_venv._run_bootstrap_actions", return_value=EXIT_OK) as mock_actions,
+        ):
+            mock_ensure.return_value = (tmp_path / "python", EXIT_OK)
+            result = run_bootstrap(repo_root=tmp_path, platform="win32", probe_import=lambda _: False)
+        assert result == EXIT_OK
+        assert "install_dev_extras" in mock_actions.call_args.kwargs["plan"]
+        assert "reinstalling to repair" in capsys.readouterr().out
 
 
 class TestParseArgs:
