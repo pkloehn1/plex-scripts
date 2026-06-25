@@ -1,0 +1,18 @@
+# Coverage config for the scripts/precommit package CI job.
+# Excludes run_in_repo_venv.py: a process-replacement bootstrap wrapper
+# (os.execv / subprocess) synced byte-identical from repo-template; its exec
+# paths cannot be measured by in-process coverage.
+
+[run]
+source = ["scripts/precommit"]
+omit = [
+    "**/test_*.py",
+    "**/tests/**",
+    "**/conftest.py",
+    "**/run_in_repo_venv.py",
+]
+
+[report]
+exclude_also = [
+    "if __name__ == .__main__.",
+]

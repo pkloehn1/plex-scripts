@@ -26,8 +26,8 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["plex_scripts*"]
+where = ["src", "."]
+include = ["plex_scripts*", "scripts*"]
 
 [tool.setuptools-scm]
 
