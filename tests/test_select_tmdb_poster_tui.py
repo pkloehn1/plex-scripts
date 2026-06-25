@@ -99,6 +99,7 @@ class TestSelectTmdbPosterTUI(unittest.TestCase):
         self.tui.state.library_state.all_libraries = False
         self.tui.state.library_state.selected_libraries = ["Movies"]
         self.tui.open_library_screen()
+        self.assertIsNot(self.tui.frame.body, self.tui.main_menu)
         self.assertIsInstance(self.tui.frame.body, urwid.Padding)
 
     def test_library_checkbox_uncheck_all_ignored(self):
@@ -201,11 +202,18 @@ class TestSelectTmdbPosterTUI(unittest.TestCase):
 
     def test_execute_scan_all_libraries(self):
         """Executing with all-libraries dispatches every movie/show library."""
+        self.tui.state.workers = 7
+        self.tui.state.poster_providers = ["tvdb", "tmdb"]
+        self.tui.state.art_providers = ["imdb"]
         with patch("plex_scripts.tmdb.select_tmdb_poster.process_libraries") as mock_process:
             self.tui._execute_scan()
         mock_process.assert_called_once()
         libraries = mock_process.call_args.args[0]
         self.assertEqual(len(libraries), 1)
+        kwargs = mock_process.call_args.kwargs
+        self.assertEqual(kwargs["max_workers"], 7)
+        self.assertEqual(kwargs["poster_provider"], ["tvdb", "tmdb"])
+        self.assertEqual(kwargs["art_provider"], ["imdb"])
 
     def test_execute_scan_selected_libraries(self):
         """Executing with explicit selections resolves each named library."""
