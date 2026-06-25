@@ -61,6 +61,7 @@ jobs:
           - package: inventory
             test_path: scripts/inventory/tests
             cov_path: scripts/inventory
+            cov_config: .github/coverage/inventory.toml
             display: INVENTORY
           - package: linting
             test_path: scripts/linting/tests
@@ -69,6 +70,7 @@ jobs:
           - package: precommit
             test_path: scripts/precommit/tests
             cov_path: scripts/precommit
+            cov_config: .github/coverage/precommit.toml
             display: PRECOMMIT
           - package: testing-hooks
             test_path: scripts/testing/hooks/tests
