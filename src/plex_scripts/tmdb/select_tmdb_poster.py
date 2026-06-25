@@ -16,6 +16,7 @@ import argparse
 import os
 import sys
 import threading
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -444,6 +445,37 @@ def process_libraries(
     print_summary()
 
 
+def _resolve_should_use_tui() -> Callable[[list[str]], bool]:
+    """Import should_use_tui, supporting both module and direct-file launches.
+
+    Under ``python -m plex_scripts.tmdb.select_tmdb_poster`` (or with the
+    package installed) the package-qualified import resolves. When run as a
+    loose file (shebang or an IDE "run" button) only the script's own
+    directory is on sys.path, so fall back to the flat sibling import.
+    """
+    try:
+        from plex_scripts.tmdb.select_tmdb_poster_config import should_use_tui
+    except ImportError:
+        from select_tmdb_poster_config import should_use_tui
+    return should_use_tui
+
+
+def _resolve_run_tui() -> Callable[[Any], None] | None:
+    """Import run_tui across launch modes, or return None when unavailable.
+
+    Returns None when neither the package nor the flat import succeeds, e.g.
+    the optional ``urwid`` dependency is missing.
+    """
+    try:
+        from plex_scripts.tmdb.select_tmdb_poster_tui import run_tui
+    except ImportError:
+        try:
+            from select_tmdb_poster_tui import run_tui
+        except ImportError:
+            return None
+    return run_tui
+
+
 if __name__ == "__main__":
     if not PLEX_URL or not PLEX_TOKEN:
         print(
@@ -455,12 +487,11 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    from select_tmdb_poster_config import should_use_tui
+    should_use_tui = _resolve_should_use_tui()
 
     if should_use_tui(sys.argv):
-        try:
-            from select_tmdb_poster_tui import run_tui
-        except ImportError:
+        run_tui = _resolve_run_tui()
+        if run_tui is None:
             print(
                 "Interactive TUI is not available. Install the 'urwid' package to use the menu interface.",
                 file=sys.stderr,

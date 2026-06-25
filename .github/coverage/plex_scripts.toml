@@ -1,0 +1,15 @@
+# Coverage config for the plex_scripts package CI job.
+# The package lives under src/ (the TMDB poster/art image-setting app).
+
+[run]
+source = ["src/plex_scripts"]
+omit = [
+    "**/test_*.py",
+    "**/tests/**",
+    "**/conftest.py",
+]
+
+[report]
+exclude_also = [
+    "if __name__ == .__main__.",
+]

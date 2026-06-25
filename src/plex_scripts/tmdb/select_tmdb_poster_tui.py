@@ -81,7 +81,7 @@ class SelectTmdbPosterTUI:
             ("Run", self._run_and_exit),
         ):
             button = urwid.Button(label)
-            urwid.connect_signal(button, "click", lambda _, h=handler: h())
+            urwid.connect_signal(button, "click", lambda _, bound_handler=handler: bound_handler())
             items.append(urwid.AttrMap(button, None, focus_map="reversed"))
         listbox = urwid.ListBox(urwid.SimpleFocusListWalker(items))
         return urwid.Padding(listbox, left=2, right=2)
@@ -102,9 +102,9 @@ class SelectTmdbPosterTUI:
             checked = (
                 not self.state.library_state.all_libraries and title in self.state.library_state.selected_libraries
             )
-            cb = urwid.CheckBox(title, state=checked)
-            urwid.connect_signal(cb, "change", self._on_library_checkbox_change, title)
-            widgets.append(cb)
+            checkbox = urwid.CheckBox(title, state=checked)
+            urwid.connect_signal(checkbox, "change", self._on_library_checkbox_change, title)
+            widgets.append(checkbox)
 
         widgets.append(urwid.Divider())
         back_btn = urwid.Button("Back")
@@ -126,9 +126,9 @@ class SelectTmdbPosterTUI:
     def open_poster_screen(self) -> None:
         """Display the poster options screen."""
         widgets = []
-        cb = urwid.CheckBox("Update posters", state=self.state.poster)
-        urwid.connect_signal(cb, "change", self._set_poster_flag)
-        widgets.append(cb)
+        checkbox = urwid.CheckBox("Update posters", state=self.state.poster)
+        urwid.connect_signal(checkbox, "change", self._set_poster_flag)
+        widgets.append(checkbox)
 
         widgets.append(urwid.Divider())
         back_btn = urwid.Button("Back")
@@ -144,9 +144,9 @@ class SelectTmdbPosterTUI:
     def open_art_screen(self) -> None:
         """Display the art options screen."""
         widgets = []
-        cb = urwid.CheckBox("Update art", state=self.state.art)
-        urwid.connect_signal(cb, "change", self._set_art_flag)
-        widgets.append(cb)
+        checkbox = urwid.CheckBox("Update art", state=self.state.art)
+        urwid.connect_signal(checkbox, "change", self._set_art_flag)
+        widgets.append(checkbox)
 
         widgets.append(urwid.Divider())
         back_btn = urwid.Button("Back")

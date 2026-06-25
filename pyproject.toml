@@ -103,6 +103,9 @@ warn_unused_configs = true
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+# src layout: ensure plex_scripts imports from the working tree so coverage of
+# src/plex_scripts collects data even when the package is wheel-installed in CI.
+pythonpath = ["src"]
 
 [tool.pylint.main]
 # Disable pylint - ruff is the standard linter for this repository
