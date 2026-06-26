@@ -9,6 +9,7 @@ import pytest
 pytest.importorskip("urwid")
 
 import urwid
+from plexapi.exceptions import NotFound
 
 from plex_scripts.tmdb.select_tmdb_poster_tui import ALL_LABEL, SelectTmdbPosterTUI, run_tui
 
@@ -113,6 +114,19 @@ class TestSelectTmdbPosterTUI(unittest.TestCase):
         self.tui._on_library_checkbox_change(MagicMock(), True, "Movies")
         self.assertFalse(self.tui.state.library_state.all_libraries)
         self.assertIn("Movies", self.tui.state.library_state.selected_libraries)
+
+    def test_library_toggle_syncs_in_place_without_rebuild(self):
+        """Toggling a library updates checkbox states in place, keeping focus."""
+        tui = SelectTmdbPosterTUI(_make_plex(["Movies", "Shows"]))
+        tui.open_library_screen()
+        body_before = tui.frame.body
+
+        tui._on_library_checkbox_change(tui.library_checkboxes["Movies"], True, "Movies")
+
+        self.assertIs(tui.frame.body, body_before)
+        self.assertFalse(tui.library_checkboxes[ALL_LABEL].get_state())
+        self.assertTrue(tui.library_checkboxes["Movies"].get_state())
+        self.assertFalse(tui.library_checkboxes["Shows"].get_state())
 
     # ---- poster / art options ------------------------------------------
     def test_open_poster_screen_and_flag(self):
@@ -225,6 +239,22 @@ class TestSelectTmdbPosterTUI(unittest.TestCase):
             self.tui._execute_scan()
         mock_process.assert_called_once()
         self.mock_plex.library.section.assert_called_once_with("Movies")
+
+    def test_execute_scan_skips_missing_library(self):
+        """A selected library missing from Plex is skipped rather than fatal."""
+        self.tui.state.library_state.all_libraries = False
+        self.tui.state.library_state.selected_libraries = ["Movies", "Gone"]
+        found = MagicMock()
+
+        def fake_section(name):
+            if name == "Gone":
+                raise NotFound("missing")
+            return found
+
+        self.mock_plex.library.section.side_effect = fake_section
+        with patch("plex_scripts.tmdb.select_tmdb_poster.process_libraries") as mock_process:
+            self.tui._execute_scan()
+        self.assertEqual(mock_process.call_args.args[0], [found])
 
 
 class TestRunTui(unittest.TestCase):

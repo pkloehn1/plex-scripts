@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import urwid
+from plexapi.exceptions import NotFound
 from plexapi.server import PlexServer
 
 from plex_scripts.tmdb import select_tmdb_poster as core
@@ -49,6 +50,7 @@ class SelectTmdbPosterTUI:
             art_providers=list(default_order),
         )
         self.library_titles: list[str] = library_titles
+        self.library_checkboxes: dict[str, urwid.CheckBox] = {}
         self._run_selected = False
 
         self.header = urwid.Text("TMDB Poster Selector - TUI", align="center")
@@ -93,9 +95,11 @@ class SelectTmdbPosterTUI:
     def open_library_screen(self) -> None:
         """Display the library selection screen."""
         widgets = []
+        self.library_checkboxes = {}
 
         all_checkbox = urwid.CheckBox(ALL_LABEL, state=self.state.library_state.all_libraries)
         urwid.connect_signal(all_checkbox, "change", self._on_library_checkbox_change, ALL_LABEL)
+        self.library_checkboxes[ALL_LABEL] = all_checkbox
         widgets.append(all_checkbox)
 
         for title in self.library_titles:
@@ -104,6 +108,7 @@ class SelectTmdbPosterTUI:
             )
             checkbox = urwid.CheckBox(title, state=checked)
             urwid.connect_signal(checkbox, "change", self._on_library_checkbox_change, title)
+            self.library_checkboxes[title] = checkbox
             widgets.append(checkbox)
 
         widgets.append(urwid.Divider())
@@ -119,8 +124,21 @@ class SelectTmdbPosterTUI:
             # Ignore unchecking of ALL; logic handled via specific boxes
             return
         self.state.library_state = toggle_library_selection(self.state.library_state, label, ALL_LABEL)
-        # Ensure visual state is consistent: rebuild screen
-        self.open_library_screen()
+        # Sync checkbox states in place so the user's focus position is kept
+        # (rebuilding the screen would reset focus to the top row).
+        self._sync_library_checkboxes()
+
+    def _sync_library_checkboxes(self) -> None:
+        """Align checkbox states with the selection model without a rebuild."""
+        selection = self.state.library_state
+        all_checkbox = self.library_checkboxes.get(ALL_LABEL)
+        if all_checkbox is not None:
+            all_checkbox.set_state(selection.all_libraries, do_callback=False)
+        for title, checkbox in self.library_checkboxes.items():
+            if title == ALL_LABEL:
+                continue
+            checked = not selection.all_libraries and title in selection.selected_libraries
+            checkbox.set_state(checked, do_callback=False)
 
     # ---- poster options ------------------------------------------------
     def open_poster_screen(self) -> None:
@@ -274,7 +292,12 @@ class SelectTmdbPosterTUI:
         if self.state.library_state.all_libraries:
             libraries = [lib for lib in self.plex.library.sections() if lib.type in ["movie", "show"]]
         else:
-            libraries = [self.plex.library.section(name) for name in self.state.library_state.selected_libraries]
+            libraries = []
+            for name in self.state.library_state.selected_libraries:
+                try:
+                    libraries.append(self.plex.library.section(name))
+                except NotFound:
+                    core.vprint(f"  - WARNING: Library '{name}' not found in Plex. Skipping.")
 
         core.VERBOSE = self.state.verbose
         core.process_libraries(
