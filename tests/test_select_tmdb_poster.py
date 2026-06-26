@@ -403,6 +403,38 @@ class TestProcessLibraries(_CoreTestBase):
         mock_summary.assert_called_once()
         library.all.assert_called_once_with(includeGuids=False)
 
+    def test_isolates_one_library_failure(self):
+        """A failing library is recorded and does not abort the other libraries."""
+        good_library = MagicMock()
+        good_library.title = "Good"
+        good_library.all.return_value = [MagicMock()]
+        bad_library = MagicMock()
+        bad_library.title = "Bad"
+        bad_library.all.return_value = [MagicMock()]
+
+        def fake_select_library(library, *_args, **_kwargs):
+            if library.title == "Bad":
+                raise RuntimeError("boom")
+
+        with (
+            patch.object(core, "select_library", side_effect=fake_select_library),
+            patch.object(core, "print_summary"),
+            patch("sys.stdout.write"),
+            patch("sys.stdout.flush"),
+        ):
+            core.process_libraries(
+                [good_library, bad_library],
+                include_locked=False,
+                poster=True,
+                poster_provider="tmdb",
+                art=False,
+                art_provider="tmdb",
+            )
+
+        recorded = [error for error in core.errors if error["library"] == "Bad"]
+        self.assertEqual(len(recorded), 1)
+        self.assertEqual(recorded[0]["type"], "library")
+
 
 class TestEntryPointResolvers(_CoreTestBase):
     """Import resolvers supporting both module and direct-file launches."""

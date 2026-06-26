@@ -426,7 +426,7 @@ def process_libraries(
     init_progress(library_totals)
 
     with ThreadPoolExecutor(max_workers=min(len(libraries), max_workers)) as executor:
-        futures = [
+        future_to_library = {
             executor.submit(
                 select_library,
                 library,
@@ -436,11 +436,25 @@ def process_libraries(
                 poster_provider,
                 art,
                 art_provider,
-            )
+            ): library
             for library in libraries
-        ]
-        for future in futures:
-            future.result()
+        }
+        for future, library in future_to_library.items():
+            try:
+                future.result()
+            except Exception as exception:
+                # Isolate a library-level failure so one bad library does not
+                # abort the whole scan; mirrors the per-item handling in
+                # select_item.
+                with errors_lock:
+                    errors.append(
+                        {
+                            "library": library.title,
+                            "item": "(library)",
+                            "type": "library",
+                            "error": str(exception),
+                        }
+                    )
 
     print_summary()
 
