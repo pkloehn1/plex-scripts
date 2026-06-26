@@ -18,9 +18,11 @@ import sys
 import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from typing import Any
 
 import plexapi.base
+from plexapi.exceptions import NotFound
 from plexapi.server import PlexServer
 
 plexapi.base.USER_DONT_RELOAD_FOR_KEYS.add("fields")
@@ -62,6 +64,53 @@ def vprint(*args: object, **kwargs: Any) -> None:
     """Vprint."""
     if VERBOSE:
         print(*args, **kwargs)
+
+
+@dataclass(frozen=True)
+class SectionResolution:
+    """Result of resolving library section names against a Plex server."""
+
+    found: list[Any]
+    missing: list[str]
+
+
+def resolve_sections(plex: Any, names: list[str]) -> SectionResolution:
+    """Resolve library section names, separating found sections from missing ones.
+
+    Shared by the TUI and the CLI so a renamed/removed library is skipped
+    rather than raising an unhandled NotFound.
+    """
+    found: list[Any] = []
+    missing: list[str] = []
+    for name in names:
+        try:
+            found.append(plex.library.section(name))
+        except NotFound:
+            missing.append(name)
+    return SectionResolution(found=found, missing=missing)
+
+
+def _reset_run_state() -> None:
+    """Clear per-run global state so repeated scans do not accumulate."""
+    with stats_lock:
+        stats.clear()
+    with errors_lock:
+        errors.clear()
+    with progress_lock:
+        library_progress.clear()
+
+
+def _record_library_error(library_name: str, exception: BaseException) -> None:
+    """Record a library-level failure without aborting the rest of the scan."""
+    with errors_lock:
+        errors.append(
+            {
+                "library": library_name,
+                "item": "(library)",
+                "type": "library",
+                "error": str(exception),
+            }
+        )
 
 
 def _make_progress_bar(percentage: float) -> str:
@@ -410,39 +459,55 @@ def process_libraries(
     art: bool,
     art_provider: str | list[str],
     max_workers: int = 4,
-) -> None:
-    """Process a collection of libraries with progress bars and threading."""
+) -> int:
+    """Process a collection of libraries with progress bars and threading.
+
+    Returns the number of errors recorded during the run so callers (the CLI)
+    can signal partial failure via a non-zero exit code.
+    """
+    _reset_run_state()
     if not libraries:
         print("No movie or show libraries found. Exiting.")
-        return
+        return 0
 
-    library_totals = {}
-    library_items = {}
+    # Enumerate items per library, isolating libraries that fail enumeration
+    # (e.g. NotFound or a transient Plex error) so one bad library does not
+    # abort the whole scan.
+    library_items: dict[str, list[Any]] = {}
     for library in libraries:
-        items = library.all(includeGuids=False)
-        library_totals[library.title] = len(items)
-        library_items[library.title] = items
+        try:
+            library_items[library.title] = library.all(includeGuids=False)
+        except Exception as exception:
+            _record_library_error(library.title, exception)
 
-    init_progress(library_totals)
-
-    with ThreadPoolExecutor(max_workers=min(len(libraries), max_workers)) as executor:
-        futures = [
-            executor.submit(
-                select_library,
-                library,
-                library_items[library.title],
-                include_locked,
-                poster,
-                poster_provider,
-                art,
-                art_provider,
-            )
-            for library in libraries
-        ]
-        for future in futures:
-            future.result()
+    if library_items:
+        init_progress({title: len(items) for title, items in library_items.items()})
+        scheduled = [library for library in libraries if library.title in library_items]
+        with ThreadPoolExecutor(max_workers=min(len(scheduled), max_workers)) as executor:
+            future_to_library = {
+                executor.submit(
+                    select_library,
+                    library,
+                    library_items[library.title],
+                    include_locked,
+                    poster,
+                    poster_provider,
+                    art,
+                    art_provider,
+                ): library
+                for library in scheduled
+            }
+            for future, library in future_to_library.items():
+                try:
+                    future.result()
+                except Exception as exception:
+                    # Isolate worker failures, mirroring the per-item handling
+                    # in select_item.
+                    _record_library_error(library.title, exception)
 
     print_summary()
+    with errors_lock:
+        return len(errors)
 
 
 def _resolve_should_use_tui() -> Callable[[list[str]], bool]:
@@ -538,19 +603,22 @@ if __name__ == "__main__":
         )
         print_summary()
     elif opts.library:
-        library = plex.library.section(opts.library)
-        items = library.all(includeGuids=False)
-        init_progress({library.title: len(items)})
-        select_library(
-            library,
-            items,
-            include_locked=opts.include_locked,
-            poster=opts.poster,
-            poster_provider=opts.poster_provider,
-            art=opts.art,
-            art_provider=opts.art_provider,
-        )
-        print_summary()
+        resolution = resolve_sections(plex, [opts.library])
+        for name in resolution.missing:
+            print(f"Library '{name}' not found in Plex.", file=sys.stderr)
+        for library in resolution.found:
+            items = library.all(includeGuids=False)
+            init_progress({library.title: len(items)})
+            select_library(
+                library,
+                items,
+                include_locked=opts.include_locked,
+                poster=opts.poster,
+                poster_provider=opts.poster_provider,
+                art=opts.art,
+                art_provider=opts.art_provider,
+            )
+            print_summary()
     elif opts.all_libraries:
         libraries = [lib for lib in plex.library.sections() if lib.type in ["movie", "show"]]
         process_libraries(
@@ -563,3 +631,5 @@ if __name__ == "__main__":
         )
     else:
         print("No --rating_key, --library, or --all_libraries specified. Exiting.")
+
+    sys.exit(1 if errors else 0)

@@ -9,6 +9,8 @@ import pytest
 
 pytest.importorskip("plexapi")
 
+from plexapi.exceptions import NotFound
+
 from plex_scripts.tmdb import select_tmdb_poster as core
 
 
@@ -275,6 +277,25 @@ class TestSelectArt(_CoreTestBase):
         item.lockArt.assert_called_once()
 
 
+class TestResolveSections(_CoreTestBase):
+    """resolve_sections separates found sections from missing names."""
+
+    def test_separates_found_and_missing(self):
+        """Named libraries resolve to found sections; unknown names are reported missing."""
+        plex = MagicMock()
+        found_section = MagicMock()
+
+        def fake_section(name):
+            if name == "Gone":
+                raise NotFound("missing")
+            return found_section
+
+        plex.library.section.side_effect = fake_section
+        resolution = core.resolve_sections(plex, ["Movies", "Gone"])
+        self.assertEqual(resolution.found, [found_section])
+        self.assertEqual(resolution.missing, ["Gone"])
+
+
 class TestSelectItem(_CoreTestBase):
     """select_item statistics and error handling."""
 
@@ -402,6 +423,98 @@ class TestProcessLibraries(_CoreTestBase):
         mock_select_library.assert_called_once()
         mock_summary.assert_called_once()
         library.all.assert_called_once_with(includeGuids=False)
+
+    def test_isolates_one_library_failure(self):
+        """A failing library is recorded and does not abort the other libraries."""
+        good_library = MagicMock()
+        good_library.title = "Good"
+        good_library.all.return_value = [MagicMock()]
+        bad_library = MagicMock()
+        bad_library.title = "Bad"
+        bad_library.all.return_value = [MagicMock()]
+
+        def fake_select_library(library, *_args, **_kwargs):
+            if library.title == "Bad":
+                raise RuntimeError("boom")
+
+        with (
+            patch.object(core, "select_library", side_effect=fake_select_library),
+            patch.object(core, "print_summary"),
+            patch("sys.stdout.write"),
+            patch("sys.stdout.flush"),
+        ):
+            core.process_libraries(
+                [good_library, bad_library],
+                include_locked=False,
+                poster=True,
+                poster_provider="tmdb",
+                art=False,
+                art_provider="tmdb",
+            )
+
+        recorded = [error for error in core.errors if error["library"] == "Bad"]
+        self.assertEqual(len(recorded), 1)
+        self.assertEqual(recorded[0]["type"], "library")
+
+    def test_isolates_library_enumeration_failure(self):
+        """A library whose item enumeration fails is recorded and skipped."""
+        good_library = MagicMock()
+        good_library.title = "Good"
+        good_library.all.return_value = [MagicMock()]
+        bad_library = MagicMock()
+        bad_library.title = "Bad"
+        bad_library.all.side_effect = RuntimeError("enumerate boom")
+
+        with (
+            patch.object(core, "select_library") as mock_select_library,
+            patch.object(core, "print_summary"),
+            patch("sys.stdout.write"),
+            patch("sys.stdout.flush"),
+        ):
+            error_count = core.process_libraries(
+                [good_library, bad_library],
+                include_locked=False,
+                poster=True,
+                poster_provider="tmdb",
+                art=False,
+                art_provider="tmdb",
+            )
+
+        self.assertTrue(any(error["library"] == "Bad" for error in core.errors))
+        self.assertEqual(error_count, len(core.errors))
+        mock_select_library.assert_called_once()
+
+    def test_all_enumeration_failures_skip_executor(self):
+        """When every library fails enumeration, the executor is skipped."""
+        bad_library = MagicMock()
+        bad_library.title = "Bad"
+        bad_library.all.side_effect = RuntimeError("boom")
+
+        with (
+            patch.object(core, "select_library") as mock_select_library,
+            patch.object(core, "print_summary") as mock_summary,
+        ):
+            error_count = core.process_libraries(
+                [bad_library],
+                include_locked=False,
+                poster=True,
+                poster_provider="tmdb",
+                art=False,
+                art_provider="tmdb",
+            )
+
+        mock_select_library.assert_not_called()
+        mock_summary.assert_called_once()
+        self.assertEqual(error_count, 1)
+
+    def test_reset_clears_prior_run_errors(self):
+        """Each run starts from a clean error list."""
+        core.errors.append({"library": "Stale", "item": "(library)", "type": "library", "error": "old"})
+        with patch("builtins.print"):
+            core.process_libraries(
+                [], include_locked=False, poster=True, poster_provider="tmdb", art=False, art_provider="tmdb"
+            )
+        self.assertEqual(core.errors, [])
 
 
 class TestEntryPointResolvers(_CoreTestBase):

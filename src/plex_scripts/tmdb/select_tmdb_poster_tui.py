@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 
 import urwid
@@ -49,6 +50,7 @@ class SelectTmdbPosterTUI:
             art_providers=list(default_order),
         )
         self.library_titles: list[str] = library_titles
+        self.library_checkboxes: dict[str, urwid.CheckBox] = {}
         self._run_selected = False
 
         self.header = urwid.Text("TMDB Poster Selector - TUI", align="center")
@@ -93,17 +95,17 @@ class SelectTmdbPosterTUI:
     def open_library_screen(self) -> None:
         """Display the library selection screen."""
         widgets = []
+        self.library_checkboxes = {}
 
         all_checkbox = urwid.CheckBox(ALL_LABEL, state=self.state.library_state.all_libraries)
         urwid.connect_signal(all_checkbox, "change", self._on_library_checkbox_change, ALL_LABEL)
+        self.library_checkboxes[ALL_LABEL] = all_checkbox
         widgets.append(all_checkbox)
 
         for title in self.library_titles:
-            checked = (
-                not self.state.library_state.all_libraries and title in self.state.library_state.selected_libraries
-            )
-            checkbox = urwid.CheckBox(title, state=checked)
+            checkbox = urwid.CheckBox(title, state=self._library_checked(title))
             urwid.connect_signal(checkbox, "change", self._on_library_checkbox_change, title)
+            self.library_checkboxes[title] = checkbox
             widgets.append(checkbox)
 
         widgets.append(urwid.Divider())
@@ -119,8 +121,24 @@ class SelectTmdbPosterTUI:
             # Ignore unchecking of ALL; logic handled via specific boxes
             return
         self.state.library_state = toggle_library_selection(self.state.library_state, label, ALL_LABEL)
-        # Ensure visual state is consistent: rebuild screen
-        self.open_library_screen()
+        # Sync checkbox states in place so the user's focus position is kept
+        # (rebuilding the screen would reset focus to the top row).
+        self._sync_library_checkboxes()
+
+    def _library_checked(self, title: str) -> bool:
+        """Whether a specific library's checkbox should be checked."""
+        selection = self.state.library_state
+        return not selection.all_libraries and title in selection.selected_libraries
+
+    def _sync_library_checkboxes(self) -> None:
+        """Align checkbox states with the selection model without a rebuild."""
+        all_checkbox = self.library_checkboxes.get(ALL_LABEL)
+        if all_checkbox is not None:
+            all_checkbox.set_state(self.state.library_state.all_libraries, do_callback=False)
+        for title, checkbox in self.library_checkboxes.items():
+            if title == ALL_LABEL:
+                continue
+            checkbox.set_state(self._library_checked(title), do_callback=False)
 
     # ---- poster options ------------------------------------------------
     def open_poster_screen(self) -> None:
@@ -270,13 +288,23 @@ class SelectTmdbPosterTUI:
         raise urwid.ExitMainLoop()
 
     def _execute_scan(self) -> None:
-        # Map library selection state to actual Plex libraries
+        core.VERBOSE = self.state.verbose
+
+        # Map library selection state to actual Plex libraries.
         if self.state.library_state.all_libraries:
             libraries = [lib for lib in self.plex.library.sections() if lib.type in ["movie", "show"]]
         else:
-            libraries = [self.plex.library.section(name) for name in self.state.library_state.selected_libraries]
+            resolution = core.resolve_sections(self.plex, self.state.library_state.selected_libraries)
+            libraries = resolution.found
+            if resolution.missing:
+                print(
+                    "WARNING: skipped libraries not found in Plex: " + ", ".join(resolution.missing),
+                    file=sys.stderr,
+                )
+            if not libraries:
+                print("None of the selected libraries are available in Plex; nothing to scan.", file=sys.stderr)
+                return
 
-        core.VERBOSE = self.state.verbose
         core.process_libraries(
             libraries,
             include_locked=self.state.include_locked,
