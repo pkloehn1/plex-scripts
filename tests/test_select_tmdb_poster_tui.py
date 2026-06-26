@@ -256,6 +256,15 @@ class TestSelectTmdbPosterTUI(unittest.TestCase):
             self.tui._execute_scan()
         self.assertEqual(mock_process.call_args.args[0], [found])
 
+    def test_execute_scan_all_selected_missing_is_noop(self):
+        """When every selected library is missing, the scan does not run."""
+        self.tui.state.library_state.all_libraries = False
+        self.tui.state.library_state.selected_libraries = ["Gone"]
+        self.mock_plex.library.section.side_effect = NotFound("missing")
+        with patch("plex_scripts.tmdb.select_tmdb_poster.process_libraries") as mock_process:
+            self.tui._execute_scan()
+        mock_process.assert_not_called()
+
 
 class TestRunTui(unittest.TestCase):
     """The run_tui entry point."""
